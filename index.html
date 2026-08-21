@@ -1,0 +1,618 @@
+<title>AI FC Control Room</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#141318">
+
+<style>
+:root{
+  --bg:#141318; --bg-2:#1B1A21; --panel:#212028; --card:#272531; --card-2:#2E2C39;
+  --line:#33313E; --line-soft:#2A2833;
+  --ink:#F4F3F7; --ink-2:#B9B5C6; --muted:#847F94;
+  --violet:#8B5CF6; --violet-2:#A855F7; --violet-deep:#6D28D9; --violet-soft:#2A2140;
+  --good:#22C55E; --warn:#F0B429; --bad:#F05252; --info:#38BDF8;
+  --grad:linear-gradient(118deg,#6D28D9 0%,#8B5CF6 52%,#A855F7 100%);
+  --r:16px; --r-s:11px;
+}
+/* Deliberately single-theme: this is a night-mode control room, and it paints
+   its own ground so it holds on either host background. */
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{
+  background:var(--bg); color:var(--ink);
+  font-family:"Outfit",system-ui,-apple-system,"Segoe UI",sans-serif;
+  font-size:15px; line-height:1.5; -webkit-font-smoothing:antialiased;
+  padding-bottom:calc(78px + env(safe-area-inset-bottom));
+}
+.num{font-family:"IBM Plex Mono",ui-monospace,monospace;font-variant-numeric:tabular-nums}
+button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
+:focus-visible{outline:2px solid var(--violet-2);outline-offset:2px;border-radius:6px}
+
+.shell{max-width:520px;margin:0 auto;padding:0 14px}
+
+/* ---------------- header ---------------- */
+.top{
+  position:sticky;top:0;z-index:40;background:rgba(20,19,24,.88);
+  backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
+  border-bottom:1px solid var(--line-soft);
+  padding-top:env(safe-area-inset-top);
+}
+.top-in{display:flex;align-items:center;gap:12px;padding:12px 0}
+.crest{
+  width:38px;height:38px;border-radius:11px;background:var(--grad);
+  display:grid;place-items:center;font-weight:700;font-size:13px;letter-spacing:-.02em;
+  flex:none;box-shadow:0 4px 14px -4px rgba(139,92,246,.6)
+}
+.top h1{font-size:16px;font-weight:600;margin:0;letter-spacing:-.01em;line-height:1.15}
+.top .sub{font-size:11.5px;color:var(--muted);letter-spacing:.02em}
+.freshness{
+  margin-left:auto;text-align:right;font-size:9.5px;color:var(--muted);
+  letter-spacing:.06em;text-transform:uppercase;line-height:1.45;flex:none;white-space:nowrap
+}
+.top .who{min-width:0;flex:1}
+.top h1,.top .sub{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+@media (max-width:400px){ .freshness .lbl{display:none} }
+.dot{display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--good);margin-right:5px;vertical-align:1px}
+
+/* ---------------- hero ---------------- */
+.hero{
+  position:relative;overflow:hidden;border-radius:var(--r);background:var(--grad);
+  padding:20px;margin:14px 0;box-shadow:0 14px 34px -18px rgba(109,40,217,.9)
+}
+.hero::after{
+  content:"";position:absolute;right:-56px;top:-56px;width:190px;height:190px;
+  border-radius:50%;background:rgba(255,255,255,.10)
+}
+.hero::before{
+  content:"";position:absolute;right:6px;bottom:-70px;width:130px;height:130px;
+  border-radius:50%;background:rgba(255,255,255,.07)
+}
+.hero .eyebrow{
+  font-size:10.5px;letter-spacing:.16em;text-transform:uppercase;
+  color:rgba(255,255,255,.78);font-weight:600
+}
+.hero h2{margin:5px 0 2px;font-size:27px;font-weight:700;letter-spacing:-.02em}
+.hero .dl{font-size:13px;color:rgba(255,255,255,.86)}
+.count{display:flex;gap:7px;margin-top:15px;position:relative;z-index:1}
+.cbox{
+  background:rgba(0,0,0,.24);border:1px solid rgba(255,255,255,.14);
+  border-radius:10px;padding:7px 0;flex:1;text-align:center;min-width:0
+}
+.cbox b{display:block;font-size:19px;font-weight:600;letter-spacing:-.02em}
+.cbox span{font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:rgba(255,255,255,.7)}
+.hero-foot{
+  display:flex;gap:14px;margin-top:15px;padding-top:13px;
+  border-top:1px solid rgba(255,255,255,.16);position:relative;z-index:1
+}
+.hf{flex:1;min-width:0}
+.hf span{display:block;font-size:9.5px;letter-spacing:.11em;text-transform:uppercase;color:rgba(255,255,255,.7)}
+.hf b{font-size:14.5px;font-weight:600;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+/* ---------------- generic card ---------------- */
+.card{background:var(--panel);border:1px solid var(--line-soft);border-radius:var(--r);margin-bottom:12px;overflow:hidden}
+.card-h{display:flex;align-items:center;gap:10px;padding:14px 15px 11px}
+.card-h h3{margin:0;font-size:15px;font-weight:600;letter-spacing:-.01em}
+.card-h .tag{
+  margin-left:auto;font-size:10px;letter-spacing:.08em;text-transform:uppercase;
+  color:var(--muted);font-family:"IBM Plex Mono",monospace
+}
+.card-note{padding:0 15px 14px;font-size:12.5px;color:var(--muted);line-height:1.55}
+
+.sect-h{display:flex;align-items:baseline;gap:10px;margin:22px 2px 10px}
+.sect-h h2{margin:0;font-size:18px;font-weight:600;letter-spacing:-.015em}
+.sect-h .c{margin-left:auto;font-size:11px;color:var(--muted);font-family:"IBM Plex Mono",monospace}
+
+/* ---------------- player rows ---------------- */
+.grp{
+  display:flex;align-items:center;gap:8px;padding:8px 15px;background:var(--bg-2);
+  font-family:"IBM Plex Mono",monospace;font-size:9.5px;letter-spacing:.15em;
+  text-transform:uppercase;color:var(--muted);border-top:1px solid var(--line-soft)
+}
+.grp .n{margin-left:auto;letter-spacing:.04em}
+.pl{
+  display:grid;grid-template-columns:34px 1fr auto;gap:11px;align-items:center;
+  padding:11px 15px;border-top:1px solid var(--line-soft);width:100%;text-align:left
+}
+.pl:first-of-type{border-top:0}
+.pl.open{background:var(--bg-2)}
+.av{
+  width:34px;height:34px;border-radius:10px;background:var(--card);display:grid;place-items:center;
+  font-size:10px;font-weight:600;letter-spacing:.02em;color:var(--ink-2);flex:none;
+  font-family:"IBM Plex Mono",monospace
+}
+.pl-m{min-width:0}
+.pl-n{font-size:14.5px;font-weight:500;letter-spacing:-.005em;display:flex;align-items:center;gap:6px}
+.pl-n em{font-style:normal;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pl-s{font-size:11px;color:var(--muted);display:flex;align-items:center;gap:7px;margin-top:1px}
+.pl-r{text-align:right;flex:none}
+.pl-p{font-size:15px;font-weight:600;font-family:"IBM Plex Mono",monospace;letter-spacing:-.02em}
+.pl-l{font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+
+.badge{
+  font-family:"IBM Plex Mono",monospace;font-size:8.5px;font-weight:600;letter-spacing:.07em;
+  padding:2px 5px;border-radius:4px;flex:none
+}
+.b-c{background:var(--violet);color:#fff}
+.b-v{background:var(--violet-soft);color:var(--violet-2)}
+.b-d{background:#3A2A16;color:var(--warn)}
+.b-r{background:#3A1D1D;color:var(--bad)}
+.b-n{background:var(--card);color:var(--muted)}
+
+/* ---------------- expandable evidence ---------------- */
+.ev{display:none;padding:2px 15px 16px;background:var(--bg-2);border-top:1px solid var(--line-soft)}
+.ev.show{display:block}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:7px;margin:10px 0 12px}
+.st{background:var(--card);border-radius:9px;padding:9px 7px;text-align:center;min-width:0}
+.st b{display:block;font-size:15px;font-weight:600;font-family:"IBM Plex Mono",monospace;letter-spacing:-.03em}
+.st span{display:block;font-size:8.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin-top:2px;line-height:1.3}
+.st.hi b{color:var(--violet-2)}
+.meta{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:11px}
+.chip{
+  background:var(--card);border-radius:6px;padding:4px 8px;font-size:11px;color:var(--ink-2);
+  display:flex;gap:5px;align-items:center
+}
+.chip i{font-style:normal;color:var(--muted);font-size:10px}
+.newsline{
+  background:#3A1D1D;color:#FCA5A5;border-radius:8px;padding:8px 11px;font-size:12px;margin-bottom:11px
+}
+.runbar{display:flex;gap:5px;overflow-x:auto;padding-bottom:3px;-webkit-overflow-scrolling:touch}
+.runbar::-webkit-scrollbar{height:0}
+.fx{
+  flex:none;min-width:50px;border-radius:8px;padding:6px 4px;text-align:center;
+  border:1px solid var(--line);background:var(--card)
+}
+.fx b{display:block;font-size:11.5px;font-weight:600;letter-spacing:-.01em}
+.fx span{display:block;font-size:8.5px;color:var(--muted);letter-spacing:.05em;margin-top:1px}
+.fdr1,.fdr2{background:#123024;border-color:#1B4D36}
+.fdr1 b,.fdr2 b{color:#4ADE80}
+.fdr3{background:var(--card);border-color:var(--line)}
+.fdr4{background:#3A2A16;border-color:#54401F}
+.fdr4 b{color:var(--warn)}
+.fdr5{background:#3A1D1D;border-color:#5A2A2A}
+.fdr5 b{color:#FCA5A5}
+
+/* ---------------- team table ---------------- */
+.trow{display:grid;grid-template-columns:30px 1fr auto;gap:11px;align-items:center;padding:11px 15px;border-top:1px solid var(--line-soft)}
+.trow:first-of-type{border-top:0}
+.tpos{font-family:"IBM Plex Mono",monospace;font-size:11px;color:var(--muted)}
+.tnm{font-size:14px;font-weight:500;display:flex;align-items:center;gap:7px}
+.tsub{font-size:10.5px;color:var(--muted);margin-top:1px}
+.mine{background:var(--violet-soft);color:var(--violet-2);font-size:8.5px;padding:2px 5px;border-radius:4px;font-family:"IBM Plex Mono",monospace;letter-spacing:.05em}
+.mini{display:flex;gap:3px}
+.mfx{width:16px;height:16px;border-radius:4px;font-size:8.5px;display:grid;place-items:center;font-family:"IBM Plex Mono",monospace;font-weight:600}
+.m1,.m2{background:#1B4D36;color:#4ADE80}
+.m3{background:var(--card);color:var(--ink-2)}
+.m4{background:#54401F;color:var(--warn)}
+.m5{background:#5A2A2A;color:#FCA5A5}
+
+/* ---------------- watchlist ---------------- */
+.segs{display:flex;gap:6px;margin:4px 0 12px;overflow-x:auto;padding-bottom:2px}
+.segs::-webkit-scrollbar{height:0}
+.seg{
+  flex:none;padding:8px 15px;border-radius:9px;background:var(--panel);
+  border:1px solid var(--line-soft);font-size:13px;color:var(--ink-2);font-weight:500
+}
+.seg[aria-selected="true"]{background:var(--violet);border-color:var(--violet);color:#fff}
+
+/* ---------------- decision log ---------------- */
+.log{position:relative;padding-left:20px}
+.log::before{content:"";position:absolute;left:5px;top:6px;bottom:6px;width:1px;background:var(--line)}
+.entry{position:relative;padding-bottom:18px}
+.entry::before{
+  content:"";position:absolute;left:-19px;top:5px;width:11px;height:11px;border-radius:50%;
+  background:var(--violet);border:2px solid var(--bg)
+}
+.entry.check::before{background:var(--good)}
+.entry.transfer::before{background:var(--warn)}
+.e-h{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}
+.e-h b{font-size:14.5px;font-weight:600}
+.e-h time{font-size:10.5px;color:var(--muted);font-family:"IBM Plex Mono",monospace}
+.e-s{font-size:13px;color:var(--ink-2);margin:5px 0 8px;line-height:1.55}
+.e-ev{list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:6px}
+.e-ev li{
+  font-size:12.5px;color:var(--muted);line-height:1.5;padding-left:13px;position:relative
+}
+.e-ev li::before{content:"";position:absolute;left:0;top:8px;width:4px;height:4px;border-radius:50%;background:var(--violet-deep)}
+
+/* ---------------- calendar ---------------- */
+.cal{display:grid;grid-template-columns:repeat(auto-fill,minmax(104px,1fr));gap:6px;padding:0 15px 15px}
+.cd{background:var(--card);border-radius:9px;padding:8px 9px}
+.cd.next{background:var(--violet-soft);box-shadow:inset 0 0 0 1px var(--violet-deep)}
+.cd.h2{opacity:.55}
+.cd b{display:block;font-size:9px;letter-spacing:.11em;color:var(--muted);font-family:"IBM Plex Mono",monospace}
+.cd span{display:block;font-size:12px;font-weight:500;margin-top:2px;letter-spacing:-.01em}
+
+/* ---------------- views + tabbar ---------------- */
+.view{display:none}
+.view.on{display:block;animation:fade .22s ease}
+@keyframes fade{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:none}}
+@media (prefers-reduced-motion:reduce){.view.on{animation:none}}
+
+.tabs{
+  position:fixed;left:0;right:0;bottom:0;z-index:50;
+  background:rgba(27,26,33,.94);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);
+  border-top:1px solid var(--line);
+  padding:7px 6px calc(7px + env(safe-area-inset-bottom));
+  display:flex;justify-content:center;gap:2px
+}
+.tab{
+  flex:1;max-width:104px;display:flex;flex-direction:column;align-items:center;gap:3px;
+  padding:7px 2px;border-radius:11px;color:var(--muted);min-height:52px;justify-content:center
+}
+.tab svg{width:20px;height:20px;stroke:currentColor;fill:none;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+.tab span{font-size:9.5px;letter-spacing:.03em;font-weight:500}
+.tab[aria-selected="true"]{color:var(--violet-2);background:var(--violet-soft)}
+
+.foot{padding:26px 4px 10px;font-size:11px;color:var(--muted);line-height:1.7;text-align:center}
+.foot code{font-family:"IBM Plex Mono",monospace;font-size:10.5px;color:var(--ink-2)}
+
+/* ---------------- desktop ---------------- */
+@media (min-width:900px){
+  body{padding-bottom:0}
+  .shell{max-width:1120px;padding:0 26px;display:grid;grid-template-columns:206px 1fr;gap:26px;align-items:start}
+  .top-in{max-width:1120px;margin:0 auto;padding:14px 26px}
+  .tabs{
+    position:sticky;top:78px;flex-direction:column;background:none;border:0;backdrop-filter:none;
+    padding:14px 0 0;gap:3px;align-self:start
+  }
+  .tab{flex:none;max-width:none;flex-direction:row;justify-content:flex-start;gap:11px;padding:11px 14px;width:100%}
+  .tab span{font-size:13.5px}
+  .main{min-width:0}
+  .hero{margin-top:14px}
+  .cols{display:grid;grid-template-columns:1fr 1fr;gap:12px;align-items:start}
+  .cal{grid-template-columns:repeat(auto-fill,minmax(120px,1fr))}
+}
+</style>
+
+<div class="top">
+  <div class="top-in">
+    <div class="crest">AI</div>
+    <div class="who">
+      <h1>AI FC</h1>
+      <div class="sub" id="subline">Fantasy Premier League</div>
+    </div>
+    <div class="freshness">
+      <div><span class="dot"></span><span class="lbl">Data live</span></div>
+      <div id="stamp" class="num"></div>
+    </div>
+  </div>
+</div>
+
+<div class="shell">
+  <nav class="tabs" role="tablist" aria-label="Sections">
+    <button class="tab" role="tab" aria-selected="true" data-v="team">
+      <svg viewBox="0 0 24 24"><path d="M4 5h16v14H4z"/><path d="M4 10h4M16 10h4M9 5v3h6V5"/></svg><span>Team</span>
+    </button>
+    <button class="tab" role="tab" aria-selected="false" data-v="form">
+      <svg viewBox="0 0 24 24"><path d="M4 19V5"/><path d="M4 15l5-5 4 3 7-7"/><path d="M16 6h4v4"/></svg><span>Evidence</span>
+    </button>
+    <button class="tab" role="tab" aria-selected="false" data-v="fixtures">
+      <svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg><span>Fixtures</span>
+    </button>
+    <button class="tab" role="tab" aria-selected="false" data-v="watch">
+      <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg><span>Targets</span>
+    </button>
+    <button class="tab" role="tab" aria-selected="false" data-v="log">
+      <svg viewBox="0 0 24 24"><path d="M5 4h14v16H5z"/><path d="M9 9h6M9 13h6M9 17h3"/></svg><span>Log</span>
+    </button>
+  </nav>
+
+  <div class="main">
+    <section class="view on" id="v-team"></section>
+    <section class="view" id="v-form"></section>
+    <section class="view" id="v-fixtures"></section>
+    <section class="view" id="v-watch"></section>
+    <section class="view" id="v-log"></section>
+    <div class="foot" id="foot"></div>
+  </div>
+</div>
+
+<script>window.FPL = {"generated":"2026-08-21T10:09:38+00:00","generatedUK":"Fri 21 Aug 2026, 11:09 BST","stamp":"21 Aug · 11:09","gw":1,"deadline":"2026-08-21T17:30:00Z","deadlineUK":"Fri 21 Aug, 18:30 BST","gwPlayed":0,"horizon":6,"seasonWeight":0.0,"fixtureCounts":{"1":10,"2":10,"3":10,"4":10,"5":10,"6":10,"7":10,"8":10,"9":10,"10":10,"11":10,"12":10,"13":10,"14":10,"15":10,"16":10,"17":10,"18":10,"19":10,"20":10,"21":10,"22":10,"23":10,"24":10,"25":10,"26":10,"27":10,"28":10,"29":10,"30":10,"31":10,"32":10,"33":10,"34":10,"35":10,"36":10,"37":10,"38":10},"shape":"4-4-2","captain":"Haaland","vice":"João Pedro","squadValue":100.0,"xiProj":59.4,"squad":[{"id":1,"name":"Raya","full":"David Raya Martín","team":"ARS","tid":1,"pos":"GK","price":6.0,"own":36.9,"form":0.0,"pts":162,"mins":3330,"xg90":0.0,"xa90":0.0,"dc90":0.0,"csp":48,"dcp":0,"proj":4.48,"projH":26.9,"ppm":4.48,"status":"a","news":"","pen":null,"sp":null,"netT":0,"fix":1.01,"wNow":0.0,"captain":false,"vice":false,"bench":null,"run":[{"gw":1,"opp":"COV","home":true,"fdr":2},{"gw":2,"opp":"AVL","home":false,"fdr":4},{"gw":3,"opp":"CHE","home":true,"fdr":4},{"gw":4,"opp":"SUN","home":false,"fdr":3},{"gw":5,"opp":"BHA","home":false,"fdr":3},{"gw":6,"opp":"LEE","home":true,"fdr":2}]},{"id":109,"name":"Verbruggen","full":"Bart Verbruggen","team":"BHA","tid":5,"pos":"GK","price":4.5,"own":20.9,"form":0.0,"pts":130,"mins":3420,"xg90":0.0,"xa90":0.0,"dc90":0.0,"csp":28,"dcp":0,"proj":3.7,"projH":22.2,"ppm":4.93,"status":"a","news":"","pen":null,"sp":null,"netT":0,"fix":1.01,"wNow":0.0,"captain":false,"vice":false,"bench":0,"run":[{"gw":1,"opp":"AVL","home":true,"fdr":3},{"gw":2,"opp":"CHE","home":false,"fdr":4},{"gw":3,"opp":"LEE","home":true,"fdr":2},{"gw":4,"opp":"COV","home":false,"fdr":2},{"gw":5,"opp":"ARS","home":true,"fdr":4},{"gw":6,"opp":"SUN","home":false,"fdr":3}]},{"id":4,"name":"Gabriel","full":"Gabriel dos Santos Magalhães","team":"ARS","tid":1,"pos":"DEF","price":8.0,"own":29.7,"form":0.0,"pts":209,"mins":2750,"xg90":0.1,"xa90":0.06,"dc90":9.1,"csp":49,"dcp":42,"proj":6.37,"projH":38.2,"ppm":4.78,"status":"a","news":"","pen":null,"sp":null,"netT":0,"fix":1.01,"wNow":0.0,"captain":false,"vice":false,"bench":null,"run":[{"gw":1,"opp":"COV","home":true,"fdr":2},{"gw":2,"opp":"AVL","home":false,"fdr":4},{"gw":3,"opp":"CHE","home":true,"fdr":4},{"gw":4,"opp":"SUN","home":false,"fdr":3},{"gw":5,"opp":"BHA","home":false,"fdr":3},{"gw":6,"opp":"LEE","home":true,"fdr":2}]},{"id":8,"name":"Calafiori","full":"Riccardo Calafiori","team":"ARS","tid":1,"pos":"DEF","price":5.5,"own":35.3,"form":0.0,"pts":109,"mins":1697,"xg90":0.18,"xa90":0.04,"dc90":5.4,"csp":59,"dcp":5,"proj":5.48,"projH":32.9,"ppm":5.98,"status":"a","news":"","pen":null,"sp":null,"netT":0,"fix":1.01,"wNow":0.0,"captain":false,"vice":false,"bench":null,"run":[{"gw":1,"opp":"COV","home":true,"fdr":2},{"gw":2,"opp":"AVL","home":false,"fdr":4},{"gw":3,"opp":"CHE","home":true,"fdr":4},{"gw":4,"opp":"SUN","home":false,"fdr":3},{"gw":5,"opp":"BHA","home":false,"fdr":3},{"gw":6,"opp":"LEE","home":true,"fdr":2}]},{"id":130,"name":"Wieffer","full":"Mats Wieffer","team":"BHA","tid":5,"pos":"DEF","price":5.0,"own":0.3,"form":0.0,"pts":94,"mins":1901,"xg90":0.09,"xa90":0.09,"dc90":12.7,"csp":32,"dcp":82,"proj":5.04,"projH":30.2,"ppm":6.04,"status":"a","news":"","pen":null,"sp":null,"netT":0,"fix":1.01,"wNow":0.0,"captain":false,"vice":false,"bench":null,"run":[{"gw":1,"opp":"AVL","home":true,"fdr":3},{"gw":2,"opp":"CHE","home":false,"fdr":4},{"gw":3,"opp":"LEE","home":true,"fdr":2},{"gw":4,"opp":"COV","home":false,"fdr":2},{"gw":5,"opp":"ARS","home":true,"fdr":4},{"gw":6,"opp":"SUN","home":false,"fdr":3}]},{"id":532,"name":"Ballard","full":"Daniel Ballard","team":"SUN","tid":20,"pos":"DEF","price":5.0,"own":5.3,"form":0.0,"pts":116,"mins":2144,"xg90":0.1,"xa90":0.03,"dc90":11.1,"csp":25,"dcp":67,"proj":4.81,"projH":28.8,"ppm":5.77,"status":"a","news":"","pen":null,"sp":null,"netT":0,"fix":1.02,"wNow":0.0,"captain":false,"vice":false,"bench":null,"run":[{"gw":1,"opp":"IPS","home":false,"fdr":2},{"gw":2,"opp":"FUL","home":true,"fdr":2},{"gw":3,"opp":"BRE","home":false,"fdr":3},{"gw":4,"opp":"ARS","home":true,"fdr":4},{"gw":5,"opp":"MCI","home":false,"fdr":5},{"gw":6,"opp":"BHA","home":true,"fdr":2}]},{"id":269,"name":"Sessegnon","full":"Ryan Sessegnon","team":"FUL","tid":10,"pos":"DEF","price":4.5,"own":0.4,"form":0.0,"pts":95,"mins":1816,"xg90":0.08,"xa90":0.09,"dc90":10.8,"csp":27,"dcp":64,"proj":4.34,"projH":26.1,"ppm":5.79,"status":"a","news":"","pen":null,"sp":null,"netT":0,"fix":0.95,"wNow":0.0,"captain":false,"vice":false,"bench":3,"run":[{"gw":1,"opp":"CHE","home":true,"fdr":4},{"gw":2,"opp":"SUN","home":false,"fdr":3},{"gw":3,"opp":"CRY","home":true,"fdr":3},{"gw":4,"opp":"LIV","home":false,"fdr":4},{"gw":5,"opp":"MUN","home":true,"fdr":4},{"gw":6,"opp":"IPS","home":false,"fdr":2}]},{"id":399,"name":"Cherki","full":"Rayan Cherki","team":"MCI","tid":15,"pos":"MID","price":7.5,"own":7.8,"form":0.0,"pts":135,"mins":1772,"xg90":0.22,"xa90":0.45,"dc90":6.9,"csp":28,"dcp":5,"proj":5.92,"projH":35.5,"ppm":4.74,"status":"a","news":"","pen":null,"sp":1,"netT":0,"fix":1.01,"wNow":0.0,"captain":false,"vice":false,"bench":null,"run":[{"gw":1,"opp":"BOU","home":true,"fdr":3},{"gw":2,"opp":"CRY","home":false,"fdr":3},{"gw":3,"opp":"COV","home":true,"fdr":2},{"gw":4,"opp":"MUN","home":false,"fdr":4},{"gw":5,"opp":"SUN","home":true,"fdr":2},{"gw":6,"opp":"LIV","home":false,"fdr":4}]},{"id":427,"name":"Mbeumo","full":"Bryan Mbeumo","team":"MUN","tid":16,"pos":"MID","price":8.0,"own":36.4,"form":0.0,"pts":148,"mins":2611,"xg90":0.41,"xa90":0.17,"dc90":4.8,"csp":29,"dcp":0,"proj":5.32,"projH":31.9,"ppm":3.99,"status":"a","news":"","pen":2,"sp":2,"netT":0,"fix":1.04,"wNow":0.0,"captain":false,"vice":false,"bench":null,"run":[{"gw":1,"opp":"HUL","home":false,"fdr":2},{"gw":2,"opp":"IPS","home":true,"fdr":2},{"gw":3,"opp":"EVE","home":false,"fdr":3},{"gw":4,"opp":"MCI","home":true,"fdr":4},{"gw":5,"opp":"FUL","home":false,"fdr":3},{"gw":6,"opp":"TOT","home":true,"fdr":3}]},{"id":155,"name":"Enzo","full":"Enzo Fernández","team":"CHE","tid":6,"pos":"MID","price":7.0,"own":5.1,"form":0.0,"pts":157,"mins":3114,"xg90":0.33,"xa90":0.21,"dc90":7.0,"csp":27,"dcp":6,"proj":4.93,"projH":29.6,"ppm":4.22,"status":"a","news":"","pen":2,"sp":3,"netT":0,"fix":1.02,"wNow":0.0,"captain":false,"vice":false,"bench":null,"run":[{"gw":1,"opp":"FUL","home":false,"fdr":3},{"gw":2,"opp":"BHA","home":true,"fdr":2},{"gw":3,"opp":"ARS","home":false,"fdr":5},{"gw":4,"opp":"HUL","home":true,"fdr":2},{"gw":5,"opp":"BRE","home":false,"fdr":3},{"gw":6,"opp":"BOU","home":true,"fdr":3}]},{"id":96,"name":"Damsgaard","full":"Mikkel Damsgaard","team":"BRE","tid":4,"pos":"MID","price":5.5,"own":0.6,"form":0.0,"pts":113,"mins":2046,"xg90":0.11,"xa90":0.24,"dc90":10.6,"csp":25,"dcp":37,"proj":4.64,"projH":27.8,"ppm":5.06,"status":"a","news":"","pen":null,"sp":3,"netT":0,"fix":0.98,"wNow":0.0,"captain":false,"vice":false,"bench":null,"run":[{"gw":1,"opp":"TOT","home":true,"fdr":3},{"gw":2,"opp":"LEE","home":false,"fdr":3},{"gw":3,"opp":"SUN","home":true,"fdr":2},{"gw":4,"opp":"BOU","home":false,"fdr":3},{"gw":5,"opp":"CHE","home":true,"fdr":4},{"gw":6,"opp":"AVL","home":false,"fdr":4}]},{"id":127,"name":"Gomez","full":"Diego Gómez Amarilla","team":"BHA","tid":5,"pos":"MID","price":5.0,"own":3.4,"form":0.0,"pts":97,"mins":2117,"xg90":0.27,"xa90":0.07,"dc90":10.1,"csp":29,"dcp":32,"proj":4.36,"projH":26.2,"ppm":5.23,"status":"a","news":"","pen":null,"sp":null,"netT":0,"fix":1.01,"wNow":0.0,"captain":false,"vice":false,"bench":2,"run":[{"gw":1,"opp":"AVL","home":true,"fdr":3},{"gw":2,"opp":"CHE","home":false,"fdr":4},{"gw":3,"opp":"LEE","home":true,"fdr":2},{"gw":4,"opp":"COV","home":false,"fdr":2},{"gw":5,"opp":"ARS","home":true,"fdr":4},{"gw":6,"opp":"SUN","home":false,"fdr":3}]},{"id":411,"name":"Haaland","full":"Erling Haaland","team":"MCI","tid":15,"pos":"FWD","price":15.5,"own":69.4,"form":0.0,"pts":239,"mins":2953,"xg90":0.78,"xa90":0.08,"dc90":3.2,"csp":31,"dcp":0,"proj":6.91,"projH":41.4,"ppm":2.67,"status":"a","news":"","pen":1,"sp":null,"netT":0,"fix":1.01,"wNow":0.0,"captain":true,"vice":false,"bench":null,"run":[{"gw":1,"opp":"BOU","home":true,"fdr":3},{"gw":2,"opp":"CRY","home":false,"fdr":3},{"gw":3,"opp":"COV","home":true,"fdr":2},{"gw":4,"opp":"MUN","home":false,"fdr":4},{"gw":5,"opp":"SUN","home":true,"fdr":2},{"gw":6,"opp":"LIV","home":false,"fdr":4}]},{"id":165,"name":"João Pedro","full":"João Pedro Junqueira de Jesus","team":"CHE","tid":6,"pos":"FWD","price":7.5,"own":63.3,"form":0.0,"pts":177,"mins":2658,"xg90":0.5,"xa90":0.07,"dc90":4.7,"csp":28,"dcp":0,"proj":5.51,"projH":33.0,"ppm":4.41,"status":"a","news":"","pen":null,"sp":null,"netT":0,"fix":1.02,"wNow":0.0,"captain":false,"vice":true,"bench":null,"run":[{"gw":1,"opp":"FUL","home":false,"fdr":3},{"gw":2,"opp":"BHA","home":true,"fdr":2},{"gw":3,"opp":"ARS","home":false,"fdr":5},{"gw":4,"opp":"HUL","home":true,"fdr":2},{"gw":5,"opp":"BRE","home":false,"fdr":3},{"gw":6,"opp":"BOU","home":true,"fdr":3}]},{"id":248,"name":"Beto","full":"Norberto Bercique Gomes Betuncal","team":"EVE","tid":9,"pos":"FWD","price":5.5,"own":2.9,"form":0.0,"pts":104,"mins":1551,"xg90":0.52,"xa90":0.01,"dc90":5.2,"csp":25,"dcp":1,"proj":4.57,"projH":27.4,"ppm":4.99,"status":"a","news":"","pen":4,"sp":null,"netT":0,"fix":1.04,"wNow":0.0,"captain":false,"vice":false,"bench":1,"run":[{"gw":1,"opp":"CRY","home":true,"fdr":3},{"gw":2,"opp":"BOU","home":false,"fdr":3},{"gw":3,"opp":"MUN","home":true,"fdr":4},{"gw":4,"opp":"TOT","home":false,"fdr":3},{"gw":5,"opp":"IPS","home":true,"fdr":2},{"gw":6,"opp":"HUL","home":false,"fdr":2}]}],"xi":[{"id":1,"name":"Raya","full":"David Raya Martín","team":"ARS","tid":1,"pos":"GK","price":6.0,"own":36.9,"form":0.0,"pts":162,"mins":3330,"xg90":0.0,"xa90":0.0,"dc90":0.0,"csp":48,"dcp":0,"proj":4.48,"projH":26.9,"ppm":4.48,"status":"a","news":"","pen":null,"sp":null,"netT":0,"fix":1.01,"wNow":0.0,"captain":false,"vice":false,"bench":null,"run":[{"gw":1,"opp":"COV","home":true,"fdr":2},{"gw":2,"opp":"AVL","home":false,"fdr":4},{"gw":3,"opp":"CHE","home":true,"fdr":4},{"gw":4,"opp":"SUN","home":false,"fdr":3},{"gw":5,"opp":"BHA","home":false,"fdr":3},{"gw":6,"opp":"LEE","home":true,"fdr":2}]},{"id":4,"name":"Gabriel","full":"Gabriel dos Santos Magalhães","team":"ARS","tid":1,"pos":"DEF","price":8.0,"own":29.7,"form":0.0,"pts":209,"mins":2750,"xg90":0.1,"xa90":0.06,"dc90":9.1,"csp":49,"dcp":42,"proj":6.37,"projH":38.2,"ppm":4.78,"status":"a","news":"","pen":null,"sp":null,"netT":0,"fix":1.01,"wNow":0.0,"captain":false,"vice":false,"bench":null,"run":[{"gw":1,"opp":"COV","home":true,"fdr":2},{"gw":2,"opp":"AVL","home":false,"fdr":4},{"gw":3,"opp":"CHE","home":true,"fdr":4},{"gw":4,"opp":"SUN","home":false,"fdr":3},{"gw":5,"opp":"BHA","home":false,"fdr":3},{"gw":6,"opp":"LEE","home":true,"fdr":2}]},{"id":8,"name":"Calafiori","full":"Riccardo Calafiori","team":"ARS","tid":1,"pos":"DEF","price":5.5,"own":35.3,"form":0.0,"pts":109,"mins":1697,"xg90":0.18,"xa90":0.04,"dc90":5.4,"csp":59,"dcp":5,"proj":5.48,"projH":32.9,"ppm":5.98,"status":"a","news":"","pen":null,"sp":null,"netT":0,"fix":1.01,"wNow":0.0,"captain":false,"vice":false,"bench":null,"run":[{"gw":1,"opp":"COV","home":true,"fdr":2},{"gw":2,"opp":"AVL","home":false,"fdr":4},{"gw":3,"opp":"CHE","home":true,"fdr":4},{"gw":4,"opp":"SUN","home":false,"fdr":3},{"gw":5,"opp":"BHA","home":false,"fdr":3},{"gw":6,"opp":"LEE","home":true,"fdr":2}]},{"id":130,"name":"Wieffer","full":"Mats Wieffer","team":"BHA","tid":5,"pos":"DEF","price":5.0,"own":0.3,"form":0.0,"pts":94,"mins":1901,"xg90":0.09,"xa90":0.09,"dc90":12.7,"csp":32,"dcp":82,"proj":5.04,"projH":30.2,"ppm":6.04,"status":"a","news":"","pen":null,"sp":null,"netT":0,"fix":1.01,"wNow":0.0,"captain":false,"vice":false,"bench":null,"run":[{"gw":1,"opp":"AVL","home":true,"fdr":3},{"gw":2,"opp":"CHE","home":false,"fdr":4},{"gw":3,"opp":"LEE","home":true,"fdr":2},{"gw":4,"opp":"COV","home":false,"fdr":2},{"gw":5,"opp":"ARS","home":true,"fdr":4},{"gw":6,"opp":"SUN","home":false,"fdr":3}]},{"id":532,"name":"Ballard","full":"Daniel Ballard","team":"SUN","tid":20,"pos":"DEF","price":5.0,"own":5.3,"form":0.0,"pts":116,"mins":2144,"xg90":0.1,"xa90":0.03,"dc90":11.1,"csp":25,"dcp":67,"proj":4.81,"projH":28.8,"ppm":5.77,"status":"a","news":"","pen":null,"sp":null,"netT":0,"fix":1.02,"wNow":0.0,"captain":false,"vice":false,"bench":null,"run":[{"gw":1,"opp":"IPS","home":false,"fdr":2},{"gw":2,"opp":"FUL","home":true,"fdr":2},{"gw":3,"opp":"BRE","home":false,"fdr":3},{"gw":4,"opp":"ARS","home":true,"fdr":4},{"gw":5,"opp":"MCI","home":false,"fdr":5},{"gw":6,"opp":"BHA","home":true,"fdr":2}]},{"id":399,"name":"Cherki","full":"Rayan Cherki","team":"MCI","tid":15,"pos":"MID","price":7.5,"own":7.8,"form":0.0,"pts":135,"mins":1772,"xg90":0.22,"xa90":0.45,"dc90":6.9,"csp":28,"dcp":5,"proj":5.92,"projH":35.5,"ppm":4.74,"status":"a","news":"","pen":null,"sp":1,"netT":0,"fix":1.01,"wNow":0.0,"captain":false,"vice":false,"bench":null,"run":[{"gw":1,"opp":"BOU","home":true,"fdr":3},{"gw":2,"opp":"CRY","home":false,"fdr":3},{"gw":3,"opp":"COV","home":true,"fdr":2},{"gw":4,"opp":"MUN","home":false,"fdr":4},{"gw":5,"opp":"SUN","home":true,"fdr":2},{"gw":6,"opp":"LIV","home":false,"fdr":4}]},{"id":427,"name":"Mbeumo","full":"Bryan Mbeumo","team":"MUN","tid":16,"pos":"MID","price":8.0,"own":36.4,"form":0.0,"pts":148,"mins":2611,"xg90":0.41,"xa90":0.17,"dc90":4.8,"csp":29,"dcp":0,"proj":5.32,"projH":31.9,"ppm":3.99,"status":"a","news":"","pen":2,"sp":2,"netT":0,"fix":1.04,"wNow":0.0,"captain":false,"vice":false,"bench":null,"run":[{"gw":1,"opp":"HUL","home":false,"fdr":2},{"gw":2,"opp":"IPS","home":true,"fdr":2},{"gw":3,"opp":"EVE","home":false,"fdr":3},{"gw":4,"opp":"MCI","home":true,"fdr":4},{"gw":5,"opp":"FUL","home":false,"fdr":3},{"gw":6,"opp":"TOT","home":true,"fdr":3}]},{"id":155,"name":"Enzo","full":"Enzo Fernández","team":"CHE","tid":6,"pos":"MID","price":7.0,"own":5.1,"form":0.0,"pts":157,"mins":3114,"xg90":0.33,"xa90":0.21,"dc90":7.0,"csp":27,"dcp":6,"proj":4.93,"projH":29.6,"ppm":4.22,"status":"a","news":"","pen":2,"sp":3,"netT":0,"fix":1.02,"wNow":0.0,"captain":false,"vice":false,"bench":null,"run":[{"gw":1,"opp":"FUL","home":false,"fdr":3},{"gw":2,"opp":"BHA","home":true,"fdr":2},{"gw":3,"opp":"ARS","home":false,"fdr":5},{"gw":4,"opp":"HUL","home":true,"fdr":2},{"gw":5,"opp":"BRE","home":false,"fdr":3},{"gw":6,"opp":"BOU","home":true,"fdr":3}]},{"id":96,"name":"Damsgaard","full":"Mikkel Damsgaard","team":"BRE","tid":4,"pos":"MID","price":5.5,"own":0.6,"form":0.0,"pts":113,"mins":2046,"xg90":0.11,"xa90":0.24,"dc90":10.6,"csp":25,"dcp":37,"proj":4.64,"projH":27.8,"ppm":5.06,"status":"a","news":"","pen":null,"sp":3,"netT":0,"fix":0.98,"wNow":0.0,"captain":false,"vice":false,"bench":null,"run":[{"gw":1,"opp":"TOT","home":true,"fdr":3},{"gw":2,"opp":"LEE","home":false,"fdr":3},{"gw":3,"opp":"SUN","home":true,"fdr":2},{"gw":4,"opp":"BOU","home":false,"fdr":3},{"gw":5,"opp":"CHE","home":true,"fdr":4},{"gw":6,"opp":"AVL","home":false,"fdr":4}]},{"id":411,"name":"Haaland","full":"Erling Haaland","team":"MCI","tid":15,"pos":"FWD","price":15.5,"own":69.4,"form":0.0,"pts":239,"mins":2953,"xg90":0.78,"xa90":0.08,"dc90":3.2,"csp":31,"dcp":0,"proj":6.91,"projH":41.4,"ppm":2.67,"status":"a","news":"","pen":1,"sp":null,"netT":0,"fix":1.01,"wNow":0.0,"captain":true,"vice":false,"bench":null,"run":[{"gw":1,"opp":"BOU","home":true,"fdr":3},{"gw":2,"opp":"CRY","home":false,"fdr":3},{"gw":3,"opp":"COV","home":true,"fdr":2},{"gw":4,"opp":"MUN","home":false,"fdr":4},{"gw":5,"opp":"SUN","home":true,"fdr":2},{"gw":6,"opp":"LIV","home":false,"fdr":4}]},{"id":165,"name":"João Pedro","full":"João Pedro Junqueira de Jesus","team":"CHE","tid":6,"pos":"FWD","price":7.5,"own":63.3,"form":0.0,"pts":177,"mins":2658,"xg90":0.5,"xa90":0.07,"dc90":4.7,"csp":28,"dcp":0,"proj":5.51,"projH":33.0,"ppm":4.41,"status":"a","news":"","pen":null,"sp":null,"netT":0,"fix":1.02,"wNow":0.0,"captain":false,"vice":true,"bench":null,"run":[{"gw":1,"opp":"FUL","home":false,"fdr":3},{"gw":2,"opp":"BHA","home":true,"fdr":2},{"gw":3,"opp":"ARS","home":false,"fdr":5},{"gw":4,"opp":"HUL","home":true,"fdr":2},{"gw":5,"opp":"BRE","home":false,"fdr":3},{"gw":6,"opp":"BOU","home":true,"fdr":3}]}],"bench":[{"id":109,"name":"Verbruggen","full":"Bart Verbruggen","team":"BHA","tid":5,"pos":"GK","price":4.5,"own":20.9,"form":0.0,"pts":130,"mins":3420,"xg90":0.0,"xa90":0.0,"dc90":0.0,"csp":28,"dcp":0,"proj":3.7,"projH":22.2,"ppm":4.93,"status":"a","news":"","pen":null,"sp":null,"netT":0,"fix":1.01,"wNow":0.0,"captain":false,"vice":false,"bench":0,"run":[{"gw":1,"opp":"AVL","home":true,"fdr":3},{"gw":2,"opp":"CHE","home":false,"fdr":4},{"gw":3,"opp":"LEE","home":true,"fdr":2},{"gw":4,"opp":"COV","home":false,"fdr":2},{"gw":5,"opp":"ARS","home":true,"fdr":4},{"gw":6,"opp":"SUN","home":false,"fdr":3}]},{"id":248,"name":"Beto","full":"Norberto Bercique Gomes Betuncal","team":"EVE","tid":9,"pos":"FWD","price":5.5,"own":2.9,"form":0.0,"pts":104,"mins":1551,"xg90":0.52,"xa90":0.01,"dc90":5.2,"csp":25,"dcp":1,"proj":4.57,"projH":27.4,"ppm":4.99,"status":"a","news":"","pen":4,"sp":null,"netT":0,"fix":1.04,"wNow":0.0,"captain":false,"vice":false,"bench":1,"run":[{"gw":1,"opp":"CRY","home":true,"fdr":3},{"gw":2,"opp":"BOU","home":false,"fdr":3},{"gw":3,"opp":"MUN","home":true,"fdr":4},{"gw":4,"opp":"TOT","home":false,"fdr":3},{"gw":5,"opp":"IPS","home":true,"fdr":2},{"gw":6,"opp":"HUL","home":false,"fdr":2}]},{"id":127,"name":"Gomez","full":"Diego Gómez Amarilla","team":"BHA","tid":5,"pos":"MID","price":5.0,"own":3.4,"form":0.0,"pts":97,"mins":2117,"xg90":0.27,"xa90":0.07,"dc90":10.1,"csp":29,"dcp":32,"proj":4.36,"projH":26.2,"ppm":5.23,"status":"a","news":"","pen":null,"sp":null,"netT":0,"fix":1.01,"wNow":0.0,"captain":false,"vice":false,"bench":2,"run":[{"gw":1,"opp":"AVL","home":true,"fdr":3},{"gw":2,"opp":"CHE","home":false,"fdr":4},{"gw":3,"opp":"LEE","home":true,"fdr":2},{"gw":4,"opp":"COV","home":false,"fdr":2},{"gw":5,"opp":"ARS","home":true,"fdr":4},{"gw":6,"opp":"SUN","home":false,"fdr":3}]},{"id":269,"name":"Sessegnon","full":"Ryan Sessegnon","team":"FUL","tid":10,"pos":"DEF","price":4.5,"own":0.4,"form":0.0,"pts":95,"mins":1816,"xg90":0.08,"xa90":0.09,"dc90":10.8,"csp":27,"dcp":64,"proj":4.34,"projH":26.1,"ppm":5.79,"status":"a","news":"","pen":null,"sp":null,"netT":0,"fix":0.95,"wNow":0.0,"captain":false,"vice":false,"bench":3,"run":[{"gw":1,"opp":"CHE","home":true,"fdr":4},{"gw":2,"opp":"SUN","home":false,"fdr":3},{"gw":3,"opp":"CRY","home":true,"fdr":3},{"gw":4,"opp":"LIV","home":false,"fdr":4},{"gw":5,"opp":"MUN","home":true,"fdr":4},{"gw":6,"opp":"IPS","home":false,"fdr":2}]}],"watch":{"GK":[{"id":442,"name":"Pope","full":"Nick Pope","team":"NEW","tid":17,"pos":"GK","price":5.0,"own":1.3,"form":0.0,"pts":96,"mins":2416,"xg90":0.01,"xa90":0.0,"dc90":0.0,"csp":29,"dcp":0,"proj":4.05,"projH":24.3,"ppm":4.85,"status":"a","news":"","pen":null,"sp":null,"netT":0,"fix":1.04,"wNow":0.0},{"id":384,"name":"Donnarumma","full":"Gianluigi Donnarumma","team":"MCI","tid":15,"pos":"GK","price":5.5,"own":8.5,"form":0.0,"pts":135,"mins":3060,"xg90":0.0,"xa90":0.0,"dc90":0.0,"csp":32,"dcp":0,"proj":4.0,"projH":24.0,"ppm":4.37,"status":"a","news":"","pen":null,"sp":null,"netT":0,"fix":1.01,"wNow":0.0},{"id":529,"name":"Roefs","full":"Robin Roefs","team":"SUN","tid":20,"pos":"GK","price":5.0,"own":4.5,"form":0.0,"pts":136,"mins":3150,"xg90":0.0,"xa90":0.0,"dc90":0.0,"csp":24,"dcp":0,"proj":3.91,"projH":23.5,"ppm":4.7,"status":"a","news":"","pen":null,"sp":null,"netT":0,"fix":1.02,"wNow":0.0},{"id":28,"name":"Martinez","full":"Emiliano Martínez Romero","team":"AVL","tid":2,"pos":"GK","price":5.0,"own":4.5,"form":0.0,"pts":120,"mins":2835,"xg90":0.0,"xa90":0.0,"dc90":0.0,"csp":26,"dcp":0,"proj":3.87,"projH":23.2,"ppm":4.65,"status":"a","news":"","pen":null,"sp":null,"netT":0,"fix":1.0,"wNow":0.0},{"id":350,"name":"A.Becker","full":"Alisson Becker","team":"LIV","tid":14,"pos":"GK","price":5.5,"own":3.6,"form":0.0,"pts":91,"mins":2340,"xg90":0.0,"xa90":0.0,"dc90":0.0,"csp":32,"dcp":0,"proj":3.8,"projH":22.8,"ppm":4.14,"status":"a","news":"","pen":null,"sp":null,"netT":0,"fix":1.04,"wNow":0.0},{"id":82,"name":"Kelleher","full":"Caoimhín Kelleher","team":"BRE","tid":4,"pos":"GK","price":5.0,"own":5.8,"form":0.0,"pts":143,"mins":3330,"xg90":0.0,"xa90":0.01,"dc90":0.0,"csp":23,"dcp":0,"proj":3.68,"projH":22.1,"ppm":4.42,"status":"a","news":"","pen":null,"sp":null,"netT":0,"fix":0.98,"wNow":0.0}],"DEF":[{"id":387,"name":"O'Reilly","full":"Nico O'Reilly","team":"MCI","tid":15,"pos":"DEF","price":6.5,"own":21.2,"form":0.0,"pts":160,"mins":2643,"xg90":0.21,"xa90":0.09,"dc90":5.9,"csp":30,"dcp":7,"proj":5.19,"projH":31.2,"ppm":4.79,"status":"a","news":"","pen":null,"sp":null,"netT":0,"fix":1.01,"wNow":0.0},{"id":388,"name":"Guéhi","full":"Marc Guéhi","team":"MCI","tid":15,"pos":"DEF","price":6.0,"own":18.1,"form":0.0,"pts":179,"mins":3150,"xg90":0.12,"xa90":0.07,"dc90":7.9,"csp":28,"dcp":28,"proj":4.93,"projH":29.6,"ppm":4.93,"status":"a","news":"","pen":null,"sp":null,"netT":0,"fix":1.01,"wNow":0.0},{"id":201,"name":"Muñoz","full":"Daniel Muñoz Mejía","team":"CRY","tid":8,"pos":"DEF","price":5.5,"own":10.1,"form":0.0,"pts":136,"mins":2400,"xg90":0.09,"xa90":0.15,"dc90":7.3,"csp":28,"dcp":21,"proj":4.76,"projH":28.5,"ppm":5.19,"status":"a","news":"","pen":null,"sp":null,"netT":0,"fix":1.0,"wNow":0.0},{"id":356,"name":"Virgil","full":"Virgil van Dijk","team":"LIV","tid":14,"pos":"DEF","price":6.5,"own":18.6,"form":0.0,"pts":175,"mins":3420,"xg90":0.1,"xa90":0.04,"dc90":9.3,"csp":29,"dcp":45,"proj":4.75,"projH":28.5,"ppm":4.38,"status":"a","news":"","pen":null,"sp":null,"netT":0,"fix":1.04,"wNow":0.0},{"id":498,"name":"Senesi","full":"Marcos Senesi Barón","team":"TOT","tid":19,"pos":"DEF","price":6.0,"own":8.6,"form":0.0,"pts":175,"mins":3288,"xg90":0.04,"xa90":0.13,"dc90":11.5,"csp":22,"dcp":71,"proj":4.75,"projH":28.5,"ppm":4.75,"status":"a","news":"","pen":null,"sp":null,"netT":0,"fix":1.0,"wNow":0.0},{"id":229,"name":"Tarkowski","full":"James Tarkowski","team":"EVE","tid":9,"pos":"DEF","price":6.0,"own":9.0,"form":0.0,"pts":170,"mins":3330,"xg90":0.07,"xa90":0.06,"dc90":10.2,"csp":23,"dcp":56,"proj":4.68,"projH":28.1,"ppm":4.68,"status":"a","news":"","pen":null,"sp":null,"netT":0,"fix":1.04,"wNow":0.0}],"MID":[{"id":426,"name":"B.Fernandes","full":"Bruno Borges Fernandes","team":"MUN","tid":16,"pos":"MID","price":12.0,"own":51.0,"form":0.0,"pts":235,"mins":3065,"xg90":0.32,"xa90":0.36,"dc90":8.4,"csp":27,"dcp":15,"proj":6.84,"projH":41.1,"ppm":3.42,"status":"a","news":"","pen":1,"sp":1,"netT":0,"fix":1.04,"wNow":0.0},{"id":12,"name":"Saka","full":"Bukayo Saka","team":"ARS","tid":1,"pos":"MID","price":9.5,"own":9.2,"form":0.0,"pts":157,"mins":2218,"xg90":0.31,"xa90":0.29,"dc90":7.5,"csp":53,"dcp":8,"proj":6.08,"projH":36.5,"ppm":3.84,"status":"a","news":"","pen":1,"sp":2,"netT":0,"fix":1.01,"wNow":0.0},{"id":398,"name":"Foden","full":"Phil Foden","team":"MCI","tid":15,"pos":"MID","price":7.0,"own":4.3,"form":0.0,"pts":131,"mins":2078,"xg90":0.26,"xa90":0.21,"dc90":6.9,"csp":30,"dcp":5,"proj":5.3,"projH":31.8,"ppm":4.55,"status":"a","news":"","pen":null,"sp":3,"netT":0,"fix":1.01,"wNow":0.0},{"id":154,"name":"Palmer","full":"Cole Palmer","team":"CHE","tid":6,"pos":"MID","price":9.5,"own":10.4,"form":0.0,"pts":114,"mins":1954,"xg90":0.49,"xa90":0.11,"dc90":6.2,"csp":24,"dcp":3,"proj":5.29,"projH":31.7,"ppm":3.34,"status":"a","news":"","pen":1,"sp":null,"netT":0,"fix":1.02,"wNow":0.0},{"id":13,"name":"Rice","full":"Declan Rice","team":"ARS","tid":1,"pos":"MID","price":7.5,"own":18.6,"form":0.0,"pts":184,"mins":3093,"xg90":0.09,"xa90":0.21,"dc90":10.9,"csp":50,"dcp":41,"proj":5.25,"projH":31.5,"ppm":4.2,"status":"a","news":"","pen":null,"sp":1,"netT":0,"fix":1.01,"wNow":0.0},{"id":397,"name":"Semenyo","full":"Antoine Semenyo","team":"MCI","tid":15,"pos":"MID","price":8.5,"own":26.4,"form":0.0,"pts":202,"mins":3200,"xg90":0.31,"xa90":0.09,"dc90":6.6,"csp":26,"dcp":4,"proj":5.1,"projH":30.6,"ppm":3.6,"status":"a","news":"","pen":3,"sp":null,"netT":0,"fix":1.01,"wNow":0.0}],"FWD":[{"id":25,"name":"Gyökeres","full":"Viktor Gyökeres","team":"ARS","tid":1,"pos":"FWD","price":7.5,"own":9.7,"form":0.0,"pts":128,"mins":2217,"xg90":0.5,"xa90":0.08,"dc90":3.5,"csp":49,"dcp":0,"proj":4.92,"projH":29.5,"ppm":3.94,"status":"a","news":"","pen":2,"sp":null,"netT":0,"fix":1.01,"wNow":0.0},{"id":55,"name":"Watkins","full":"Ollie Watkins","team":"AVL","tid":2,"pos":"FWD","price":8.0,"own":10.9,"form":0.0,"pts":167,"mins":2833,"xg90":0.49,"xa90":0.04,"dc90":3.0,"csp":25,"dcp":0,"proj":4.89,"projH":29.3,"ppm":3.67,"status":"a","news":"","pen":2,"sp":null,"netT":0,"fix":1.01,"wNow":0.0},{"id":106,"name":"Thiago","full":"Igor Thiago Nascimento Rodrigues","team":"BRE","tid":4,"pos":"FWD","price":8.0,"own":17.4,"form":0.0,"pts":181,"mins":3282,"xg90":0.56,"xa90":0.05,"dc90":5.9,"csp":23,"dcp":2,"proj":4.8,"projH":28.8,"ppm":3.6,"status":"a","news":"","pen":1,"sp":null,"netT":0,"fix":0.98,"wNow":0.0},{"id":223,"name":"Mateta","full":"Jean-Philippe Mateta","team":"CRY","tid":8,"pos":"FWD","price":6.5,"own":5.8,"form":0.0,"pts":114,"mins":2210,"xg90":0.59,"xa90":0.05,"dc90":5.1,"csp":28,"dcp":1,"proj":4.67,"projH":28.0,"ppm":4.31,"status":"a","news":"","pen":1,"sp":null,"netT":0,"fix":1.01,"wNow":0.0},{"id":527,"name":"Richarlison","full":"Richarlison de Andrade","team":"TOT","tid":19,"pos":"FWD","price":6.0,"own":3.0,"form":0.0,"pts":119,"mins":1954,"xg90":0.4,"xa90":0.07,"dc90":6.8,"csp":31,"dcp":4,"proj":4.51,"projH":27.1,"ppm":4.51,"status":"a","news":"","pen":4,"sp":null,"netT":0,"fix":1.01,"wNow":0.0},{"id":463,"name":"Woltemade","full":"Nick Woltemade","team":"NEW","tid":17,"pos":"FWD","price":6.0,"own":1.7,"form":0.0,"pts":108,"mins":1896,"xg90":0.31,"xa90":0.07,"dc90":5.0,"csp":30,"dcp":1,"proj":4.39,"projH":26.3,"ppm":4.39,"status":"a","news":"","pen":1,"sp":null,"netT":0,"fix":1.04,"wNow":0.0}]},"table":[{"team":"EVE","name":"Everton","fdr":2.83,"run":[{"gw":1,"opp":"CRY","home":true,"fdr":3},{"gw":2,"opp":"BOU","home":false,"fdr":3},{"gw":3,"opp":"MUN","home":true,"fdr":4},{"gw":4,"opp":"TOT","home":false,"fdr":3},{"gw":5,"opp":"IPS","home":true,"fdr":2},{"gw":6,"opp":"HUL","home":false,"fdr":2}],"form":null,"owned":["Beto"]},{"team":"LIV","name":"Liverpool","fdr":2.83,"run":[{"gw":1,"opp":"NEW","home":false,"fdr":3},{"gw":2,"opp":"NFO","home":true,"fdr":3},{"gw":3,"opp":"IPS","home":false,"fdr":2},{"gw":4,"opp":"FUL","home":true,"fdr":2},{"gw":5,"opp":"BOU","home":false,"fdr":3},{"gw":6,"opp":"MCI","home":true,"fdr":4}],"form":null,"owned":[]},{"team":"MUN","name":"Man Utd","fdr":2.83,"run":[{"gw":1,"opp":"HUL","home":false,"fdr":2},{"gw":2,"opp":"IPS","home":true,"fdr":2},{"gw":3,"opp":"EVE","home":false,"fdr":3},{"gw":4,"opp":"MCI","home":true,"fdr":4},{"gw":5,"opp":"FUL","home":false,"fdr":3},{"gw":6,"opp":"TOT","home":true,"fdr":3}],"form":null,"owned":["Mbeumo"]},{"team":"NEW","name":"Newcastle","fdr":2.83,"run":[{"gw":1,"opp":"LIV","home":true,"fdr":4},{"gw":2,"opp":"TOT","home":false,"fdr":3},{"gw":3,"opp":"BOU","home":true,"fdr":3},{"gw":4,"opp":"LEE","home":false,"fdr":3},{"gw":5,"opp":"HUL","home":true,"fdr":2},{"gw":6,"opp":"COV","home":false,"fdr":2}],"form":null,"owned":[]},{"team":"ARS","name":"Arsenal","fdr":3.0,"run":[{"gw":1,"opp":"COV","home":true,"fdr":2},{"gw":2,"opp":"AVL","home":false,"fdr":4},{"gw":3,"opp":"CHE","home":true,"fdr":4},{"gw":4,"opp":"SUN","home":false,"fdr":3},{"gw":5,"opp":"BHA","home":false,"fdr":3},{"gw":6,"opp":"LEE","home":true,"fdr":2}],"form":null,"owned":["Calafiori","Gabriel","Raya"]},{"team":"AVL","name":"Aston Villa","fdr":3.0,"run":[{"gw":1,"opp":"BHA","home":false,"fdr":3},{"gw":2,"opp":"ARS","home":true,"fdr":4},{"gw":3,"opp":"HUL","home":false,"fdr":2},{"gw":4,"opp":"NFO","home":true,"fdr":3},{"gw":5,"opp":"TOT","home":false,"fdr":3},{"gw":6,"opp":"BRE","home":true,"fdr":3}],"form":null,"owned":[]},{"team":"BHA","name":"Brighton","fdr":3.0,"run":[{"gw":1,"opp":"AVL","home":true,"fdr":3},{"gw":2,"opp":"CHE","home":false,"fdr":4},{"gw":3,"opp":"LEE","home":true,"fdr":2},{"gw":4,"opp":"COV","home":false,"fdr":2},{"gw":5,"opp":"ARS","home":true,"fdr":4},{"gw":6,"opp":"SUN","home":false,"fdr":3}],"form":null,"owned":["Gomez","Verbruggen","Wieffer"]},{"team":"CHE","name":"Chelsea","fdr":3.0,"run":[{"gw":1,"opp":"FUL","home":false,"fdr":3},{"gw":2,"opp":"BHA","home":true,"fdr":2},{"gw":3,"opp":"ARS","home":false,"fdr":5},{"gw":4,"opp":"HUL","home":true,"fdr":2},{"gw":5,"opp":"BRE","home":false,"fdr":3},{"gw":6,"opp":"BOU","home":true,"fdr":3}],"form":null,"owned":["Enzo","João Pedro"]},{"team":"CRY","name":"Crystal Palace","fdr":3.0,"run":[{"gw":1,"opp":"EVE","home":false,"fdr":3},{"gw":2,"opp":"MCI","home":true,"fdr":4},{"gw":3,"opp":"FUL","home":false,"fdr":3},{"gw":4,"opp":"IPS","home":true,"fdr":2},{"gw":5,"opp":"LEE","home":false,"fdr":3},{"gw":6,"opp":"NFO","home":true,"fdr":3}],"form":null,"owned":[]},{"team":"IPS","name":"Ipswich Town","fdr":3.0,"run":[{"gw":1,"opp":"SUN","home":true,"fdr":2},{"gw":2,"opp":"MUN","home":false,"fdr":4},{"gw":3,"opp":"LIV","home":true,"fdr":4},{"gw":4,"opp":"CRY","home":false,"fdr":3},{"gw":5,"opp":"EVE","home":false,"fdr":3},{"gw":6,"opp":"FUL","home":true,"fdr":2}],"form":null,"owned":[]},{"team":"MCI","name":"Man City","fdr":3.0,"run":[{"gw":1,"opp":"BOU","home":true,"fdr":3},{"gw":2,"opp":"CRY","home":false,"fdr":3},{"gw":3,"opp":"COV","home":true,"fdr":2},{"gw":4,"opp":"MUN","home":false,"fdr":4},{"gw":5,"opp":"SUN","home":true,"fdr":2},{"gw":6,"opp":"LIV","home":false,"fdr":4}],"form":null,"owned":["Cherki","Haaland"]},{"team":"NFO","name":"Nott'm Forest","fdr":3.0,"run":[{"gw":1,"opp":"LEE","home":true,"fdr":2},{"gw":2,"opp":"LIV","home":false,"fdr":4},{"gw":3,"opp":"TOT","home":true,"fdr":3},{"gw":4,"opp":"AVL","home":false,"fdr":4},{"gw":5,"opp":"COV","home":true,"fdr":2},{"gw":6,"opp":"CRY","home":false,"fdr":3}],"form":null,"owned":[]},{"team":"TOT","name":"Spurs","fdr":3.0,"run":[{"gw":1,"opp":"BRE","home":false,"fdr":3},{"gw":2,"opp":"NEW","home":true,"fdr":2},{"gw":3,"opp":"NFO","home":false,"fdr":3},{"gw":4,"opp":"EVE","home":true,"fdr":3},{"gw":5,"opp":"AVL","home":true,"fdr":3},{"gw":6,"opp":"MUN","home":false,"fdr":4}],"form":null,"owned":[]},{"team":"SUN","name":"Sunderland","fdr":3.0,"run":[{"gw":1,"opp":"IPS","home":false,"fdr":2},{"gw":2,"opp":"FUL","home":true,"fdr":2},{"gw":3,"opp":"BRE","home":false,"fdr":3},{"gw":4,"opp":"ARS","home":true,"fdr":4},{"gw":5,"opp":"MCI","home":false,"fdr":5},{"gw":6,"opp":"BHA","home":true,"fdr":2}],"form":null,"owned":["Ballard"]},{"team":"BRE","name":"Brentford","fdr":3.17,"run":[{"gw":1,"opp":"TOT","home":true,"fdr":3},{"gw":2,"opp":"LEE","home":false,"fdr":3},{"gw":3,"opp":"SUN","home":true,"fdr":2},{"gw":4,"opp":"BOU","home":false,"fdr":3},{"gw":5,"opp":"CHE","home":true,"fdr":4},{"gw":6,"opp":"AVL","home":false,"fdr":4}],"form":null,"owned":["Damsgaard"]},{"team":"COV","name":"Coventry City","fdr":3.17,"run":[{"gw":1,"opp":"ARS","home":false,"fdr":5},{"gw":2,"opp":"HUL","home":true,"fdr":2},{"gw":3,"opp":"MCI","home":false,"fdr":5},{"gw":4,"opp":"BHA","home":true,"fdr":2},{"gw":5,"opp":"NFO","home":false,"fdr":3},{"gw":6,"opp":"NEW","home":true,"fdr":2}],"form":null,"owned":[]},{"team":"HUL","name":"Hull City","fdr":3.17,"run":[{"gw":1,"opp":"MUN","home":true,"fdr":4},{"gw":2,"opp":"COV","home":false,"fdr":2},{"gw":3,"opp":"AVL","home":true,"fdr":3},{"gw":4,"opp":"CHE","home":false,"fdr":4},{"gw":5,"opp":"NEW","home":false,"fdr":3},{"gw":6,"opp":"EVE","home":true,"fdr":3}],"form":null,"owned":[]},{"team":"LEE","name":"Leeds","fdr":3.17,"run":[{"gw":1,"opp":"NFO","home":false,"fdr":3},{"gw":2,"opp":"BRE","home":true,"fdr":3},{"gw":3,"opp":"BHA","home":false,"fdr":3},{"gw":4,"opp":"NEW","home":true,"fdr":2},{"gw":5,"opp":"CRY","home":true,"fdr":3},{"gw":6,"opp":"ARS","home":false,"fdr":5}],"form":null,"owned":[]},{"team":"FUL","name":"Fulham","fdr":3.33,"run":[{"gw":1,"opp":"CHE","home":true,"fdr":4},{"gw":2,"opp":"SUN","home":false,"fdr":3},{"gw":3,"opp":"CRY","home":true,"fdr":3},{"gw":4,"opp":"LIV","home":false,"fdr":4},{"gw":5,"opp":"MUN","home":true,"fdr":4},{"gw":6,"opp":"IPS","home":false,"fdr":2}],"form":null,"owned":["Sessegnon"]},{"team":"BOU","name":"Bournemouth","fdr":3.67,"run":[{"gw":1,"opp":"MCI","home":false,"fdr":5},{"gw":2,"opp":"EVE","home":true,"fdr":3},{"gw":3,"opp":"NEW","home":false,"fdr":3},{"gw":4,"opp":"BRE","home":true,"fdr":3},{"gw":5,"opp":"LIV","home":true,"fdr":4},{"gw":6,"opp":"CHE","home":false,"fdr":4}],"form":null,"owned":[]}],"log":[{"gw":1,"date":"2026-08-21","title":"Initial squad built","kind":"squad","summary":"All 599 players fed through the projection model, then optimised under the real constraints: £100.0m, 2/5/5/3, max 3 per club. Landed on a 4-4-2 spending exactly £100.0m.","evidence":["Haaland and João Pedro included partly on ownership — at 69% and 63%, not owning them is the biggest single risk in the game.","Gabriel is the highest-projected defender: 9.1 CBIT/90 gives a 42% chance of the defensive bonus every week, on top of a 49% clean-sheet probability.","Wieffer, Damsgaard and Sessegnon are sub-1% owned but hit their defensive thresholds 82%, 37% and 64% of the time — the market has not priced defensive contribution properly."]},{"gw":1,"date":"2026-08-21","title":"Foden → Enzo Fernández","kind":"transfer","summary":"Swapped before submitting. Same £7.0m price. Foden projected slightly higher per 90 but appeared in only 51% of predicted Man City XIs.","evidence":["Foden: 2,078 minutes last season, 51% of predicted starting XIs — effectively a coin flip.","Enzo: 3,114 minutes, 87% of predicted XIs, on Chelsea set pieces and second penalties.","Also reduced Man City exposure from three players to two, cutting rotation risk concentration."]},{"gw":1,"date":"2026-08-21","title":"Verified against press conferences","kind":"check","summary":"Every one of the fifteen cross-checked against manager press conferences and predicted lineups before submitting.","evidence":["Arteta confirmed Saliba is a long-term absence and Timber is not yet training — strengthens Gabriel and Calafiori rather than threatening them.","Le Bris: all Sunderland players available except Adingra. Ballard clear.","Doku ruled out for Man City, which is what opens the number-ten role for Cherki (66% of predicted XIs).","Sessegnon absent from Fulham's predicted XI — flagged as a risk, but he is bench slot 3 so the cost this week is near zero."]}],"calendar":[{"gw":1,"deadline":"2026-08-21T17:30:00Z","uk":"Fri 21 Aug · 18:30","fixtures":10,"half":1},{"gw":2,"deadline":"2026-08-28T17:30:00Z","uk":"Fri 28 Aug · 18:30","fixtures":10,"half":1},{"gw":3,"deadline":"2026-09-04T17:30:00Z","uk":"Fri 4 Sep · 18:30","fixtures":10,"half":1},{"gw":4,"deadline":"2026-09-12T12:30:00Z","uk":"Sat 12 Sep · 13:30","fixtures":10,"half":1},{"gw":5,"deadline":"2026-09-18T17:30:00Z","uk":"Fri 18 Sep · 18:30","fixtures":10,"half":1},{"gw":6,"deadline":"2026-10-10T10:00:00Z","uk":"Sat 10 Oct · 11:00","fixtures":10,"half":1},{"gw":7,"deadline":"2026-10-17T10:00:00Z","uk":"Sat 17 Oct · 11:00","fixtures":10,"half":1},{"gw":8,"deadline":"2026-10-23T17:30:00Z","uk":"Fri 23 Oct · 18:30","fixtures":10,"half":1},{"gw":9,"deadline":"2026-10-31T11:00:00Z","uk":"Sat 31 Oct · 11:00","fixtures":10,"half":1},{"gw":10,"deadline":"2026-11-07T13:30:00Z","uk":"Sat 7 Nov · 13:30","fixtures":10,"half":1},{"gw":11,"deadline":"2026-11-21T13:30:00Z","uk":"Sat 21 Nov · 13:30","fixtures":10,"half":1},{"gw":12,"deadline":"2026-11-28T13:30:00Z","uk":"Sat 28 Nov · 13:30","fixtures":10,"half":1},{"gw":13,"deadline":"2026-12-02T18:30:00Z","uk":"Wed 2 Dec · 18:30","fixtures":10,"half":1},{"gw":14,"deadline":"2026-12-05T13:30:00Z","uk":"Sat 5 Dec · 13:30","fixtures":10,"half":1},{"gw":15,"deadline":"2026-12-12T13:30:00Z","uk":"Sat 12 Dec · 13:30","fixtures":10,"half":1},{"gw":16,"deadline":"2026-12-19T13:30:00Z","uk":"Sat 19 Dec · 13:30","fixtures":10,"half":1},{"gw":17,"deadline":"2026-12-26T13:30:00Z","uk":"Sat 26 Dec · 13:30","fixtures":10,"half":1},{"gw":18,"deadline":"2026-12-30T18:30:00Z","uk":"Wed 30 Dec · 18:30","fixtures":10,"half":1},{"gw":19,"deadline":"2027-01-02T13:30:00Z","uk":"Sat 2 Jan · 13:30","fixtures":10,"half":1},{"gw":20,"deadline":"2027-01-06T18:30:00Z","uk":"Wed 6 Jan · 18:30","fixtures":10,"half":2},{"gw":21,"deadline":"2027-01-16T13:30:00Z","uk":"Sat 16 Jan · 13:30","fixtures":10,"half":2},{"gw":22,"deadline":"2027-01-23T13:30:00Z","uk":"Sat 23 Jan · 13:30","fixtures":10,"half":2},{"gw":23,"deadline":"2027-01-30T13:30:00Z","uk":"Sat 30 Jan · 13:30","fixtures":10,"half":2},{"gw":24,"deadline":"2027-02-06T13:30:00Z","uk":"Sat 6 Feb · 13:30","fixtures":10,"half":2},{"gw":25,"deadline":"2027-02-10T18:30:00Z","uk":"Wed 10 Feb · 18:30","fixtures":10,"half":2},{"gw":26,"deadline":"2027-02-20T13:30:00Z","uk":"Sat 20 Feb · 13:30","fixtures":10,"half":2},{"gw":27,"deadline":"2027-02-27T13:30:00Z","uk":"Sat 27 Feb · 13:30","fixtures":10,"half":2},{"gw":28,"deadline":"2027-03-03T18:30:00Z","uk":"Wed 3 Mar · 18:30","fixtures":10,"half":2},{"gw":29,"deadline":"2027-03-13T13:30:00Z","uk":"Sat 13 Mar · 13:30","fixtures":10,"half":2},{"gw":30,"deadline":"2027-03-20T13:30:00Z","uk":"Sat 20 Mar · 13:30","fixtures":10,"half":2},{"gw":31,"deadline":"2027-04-10T12:30:00Z","uk":"Sat 10 Apr · 13:30","fixtures":10,"half":2},{"gw":32,"deadline":"2027-04-17T12:30:00Z","uk":"Sat 17 Apr · 13:30","fixtures":10,"half":2},{"gw":33,"deadline":"2027-04-24T12:30:00Z","uk":"Sat 24 Apr · 13:30","fixtures":10,"half":2},{"gw":34,"deadline":"2027-05-01T12:30:00Z","uk":"Sat 1 May · 13:30","fixtures":10,"half":2},{"gw":35,"deadline":"2027-05-08T12:30:00Z","uk":"Sat 8 May · 13:30","fixtures":10,"half":2},{"gw":36,"deadline":"2027-05-15T12:30:00Z","uk":"Sat 15 May · 13:30","fixtures":10,"half":2},{"gw":37,"deadline":"2027-05-23T12:30:00Z","uk":"Sun 23 May · 13:30","fixtures":10,"half":2},{"gw":38,"deadline":"2027-05-30T13:30:00Z","uk":"Sun 30 May · 14:30","fixtures":10,"half":2}]};</script>
+<script>
+(function(){
+  "use strict";
+  const D = window.FPL;
+  const $ = (s,r)=> (r||document).querySelector(s);
+  const esc = s => String(s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+  const initials = n => n.replace(/[^A-Za-zÀ-ÿ' ]/g,"").split(/\s+/).filter(Boolean).slice(0,2).map(w=>w[0]).join("").toUpperCase();
+  const ORDER = {GK:0,DEF:1,MID:2,FWD:3};
+  const LONG = {GK:"Goalkeeper",DEF:"Defenders",MID:"Midfielders",FWD:"Forwards"};
+
+  /* ---------- shared fragments ---------- */
+  function runBar(run, big){
+    if(!run || !run.length) return "";
+    return '<div class="runbar">' + run.map(f =>
+      `<div class="fx fdr${f.fdr}"><b>${esc(f.opp)}</b><span>${f.home?"H":"A"} · GW${f.gw}</span></div>`
+    ).join("") + "</div>";
+  }
+  function miniRun(run){
+    return '<div class="mini">' + run.slice(0,6).map(f =>
+      `<div class="mfx m${f.fdr}" title="GW${f.gw} ${f.home?"vs":"at"} ${esc(f.opp)} — difficulty ${f.fdr}">${f.fdr}</div>`
+    ).join("") + "</div>";
+  }
+  function flags(p){
+    let out = "";
+    if(p.captain) out += '<span class="badge b-c">C</span>';
+    if(p.vice) out += '<span class="badge b-v">V</span>';
+    if(p.status === "d") out += '<span class="badge b-d">DOUBT</span>';
+    if(p.status === "i" || p.status === "u") out += '<span class="badge b-r">OUT</span>';
+    return out;
+  }
+  function playerRow(p, i){
+    return `<button class="pl" data-p="${p.id}" aria-expanded="false">
+      <div class="av">${esc(initials(p.full || p.name))}</div>
+      <div class="pl-m">
+        <div class="pl-n"><em>${esc(p.name)}</em>${flags(p)}</div>
+        <div class="pl-s"><span>${esc(p.team)}</span><span>£${p.price.toFixed(1)}m</span><span>${p.own.toFixed(1)}% owned</span></div>
+      </div>
+      <div class="pl-r"><div class="pl-p">${p.proj.toFixed(1)}</div><div class="pl-l">proj/gw</div></div>
+    </button>
+    <div class="ev">${evidence(p)}</div>`;
+  }
+  function evidence(p){
+    const isKeeper = p.pos === "GK";
+    const cells = isKeeper
+      ? [["csp","Clean sheet %",p.csp+"%",true],["xa90","xA / 90",p.xa90,false],["mins","Minutes",p.mins,false],["pts","Points 25/26",p.pts,false]]
+      : [["xg90","xG / 90",p.xg90,p.xg90>=0.3],["xa90","xA / 90",p.xa90,p.xa90>=0.2],
+         ["dcp","Def. bonus %",p.dcp+"%",p.dcp>=50],["csp","Clean sheet %",p.csp+"%",p.csp>=40]];
+    let html = '<div class="stats">' + cells.map(c =>
+      `<div class="st${c[3]?" hi":""}"><b>${esc(String(c[2]))}</b><span>${esc(c[1])}</span></div>`).join("") + "</div>";
+
+    const m = [];
+    m.push(`<span class="chip"><i>Mins 25/26</i>${p.mins.toLocaleString()}</span>`);
+    m.push(`<span class="chip"><i>6-GW proj</i>${p.projH}</span>`);
+    m.push(`<span class="chip"><i>Per £m</i>${p.ppm}</span>`);
+    if(p.pen) m.push(`<span class="chip"><i>Penalties</i>#${p.pen}</span>`);
+    if(p.sp) m.push(`<span class="chip"><i>Set pieces</i>#${p.sp}</span>`);
+    if(p.netT) m.push(`<span class="chip"><i>Net transfers</i>${p.netT>0?"+":""}${p.netT.toLocaleString()}</span>`);
+    m.push(`<span class="chip"><i>Fixture mult.</i>${p.fix.toFixed(2)}×</span>`);
+    html += '<div class="meta">' + m.join("") + "</div>";
+
+    if(p.news) html += `<div class="newsline">${esc(p.news)}</div>`;
+    html += runBar(p.run || (D.table.find(t=>t.team===p.team)||{}).run);
+    return html;
+  }
+  function group(list){
+    const by = {};
+    list.forEach(p => (by[p.pos] = by[p.pos] || []).push(p));
+    return Object.keys(by).sort((a,b)=>ORDER[a]-ORDER[b]).map(pos => {
+      const g = by[pos].sort((a,b)=> b.proj - a.proj);
+      const tot = g.reduce((s,p)=>s+p.proj,0);
+      return `<div class="grp"><span>${LONG[pos]}</span><span class="n">${tot.toFixed(1)} pts proj</span></div>`
+        + g.map(playerRow).join("");
+    }).join("");
+  }
+
+  /* ---------- views ---------- */
+  function vTeam(){
+    const benchList = D.bench.map((p,i) =>
+      `<button class="pl" data-p="${p.id}" aria-expanded="false">
+        <div class="av">${i+1}</div>
+        <div class="pl-m">
+          <div class="pl-n"><em>${esc(p.name)}</em>${flags(p)}<span class="badge b-n">${p.pos}</span></div>
+          <div class="pl-s"><span>${esc(p.team)}</span><span>£${p.price.toFixed(1)}m</span></div>
+        </div>
+        <div class="pl-r"><div class="pl-p">${p.proj.toFixed(1)}</div><div class="pl-l">proj/gw</div></div>
+      </button><div class="ev">${evidence(p)}</div>`).join("");
+
+    return `
+    <div class="hero">
+      <div class="eyebrow">Gameweek ${D.gw} · deadline</div>
+      <h2>${esc(D.deadlineUK)}</h2>
+      <div class="dl">Team is saved. Everything below is editable until the deadline.</div>
+      <div class="count" id="count">
+        <div class="cbox"><b class="num" data-c="d">–</b><span>days</span></div>
+        <div class="cbox"><b class="num" data-c="h">–</b><span>hrs</span></div>
+        <div class="cbox"><b class="num" data-c="m">–</b><span>min</span></div>
+        <div class="cbox"><b class="num" data-c="s">–</b><span>sec</span></div>
+      </div>
+      <div class="hero-foot">
+        <div class="hf"><span>Shape</span><b>${esc(D.shape)}</b></div>
+        <div class="hf"><span>Captain</span><b>${esc(D.captain)}</b></div>
+        <div class="hf"><span>XI proj</span><b>${D.xiProj} pts</b></div>
+        <div class="hf"><span>Value</span><b>£${D.squadValue}m</b></div>
+      </div>
+    </div>
+
+    <div class="sect-h"><h2>Starting XI</h2><span class="c">tap a player for the numbers</span></div>
+    <div class="card">${group(D.xi)}</div>
+
+    <div class="sect-h"><h2>Bench</h2><span class="c">in substitution order</span></div>
+    <div class="card">${benchList}</div>`;
+  }
+
+  function vForm(){
+    const all = D.squad.slice().sort((a,b)=> b.proj - a.proj);
+    const risky = all.filter(p => p.own < 5);
+    return `
+    <div class="sect-h"><h2>The evidence</h2><span class="c">${all.length} players</span></div>
+    <div class="card">
+      <div class="card-h"><h3>How the projection is built</h3></div>
+      <div class="card-note">
+        Expected goals and assists per 90, a clean-sheet probability from expected goals conceded,
+        and the odds of clearing the defensive-contribution threshold — combined under the real
+        scoring rules, then scaled by expected minutes, availability and fixture difficulty over
+        the next ${D.horizon} gameweeks.
+        <br><br>
+        Current-season weighting: <strong>${Math.round(D.seasonWeight*100)}%</strong>
+        (${D.gwPlayed} gameweek${D.gwPlayed===1?"":"s"} played). The rest still comes from
+        2025/26 — that share falls to zero as this season's sample grows.
+      </div>
+    </div>
+
+    <div class="sect-h"><h2>Squad, ranked</h2><span class="c">by projected points</span></div>
+    <div class="card">${all.map(playerRow).join("")}</div>
+
+    ${risky.length ? `<div class="sect-h"><h2>Low-ownership picks</h2><span class="c">under 5% owned</span></div>
+    <div class="card">
+      <div class="card-note" style="padding-top:14px">
+        These are where the model disagrees most with the crowd. Each one is here because of a
+        specific number — usually a defensive-contribution rate the market hasn't priced. They are
+        also the first things to re-check if the team underperforms.
+      </div>
+      ${risky.map(playerRow).join("")}
+    </div>` : ""}`;
+  }
+
+  function vFixtures(){
+    const rows = D.table.map((t,i) => `
+      <div class="trow">
+        <div class="tpos">${i+1}</div>
+        <div>
+          <div class="tnm">${esc(t.name)}${t.owned.length?`<span class="mine">${t.owned.length} owned</span>`:""}</div>
+          <div class="tsub">${t.owned.length ? esc(t.owned.join(", ")) : "no players owned"}${t.form?` · last ${t.form.played}: ${t.form.gf} scored, ${t.form.ga} conceded per game`:""}</div>
+        </div>
+        <div style="text-align:right">
+          ${miniRun(t.run)}
+          <div class="pl-l" style="margin-top:4px">avg ${t.fdr}</div>
+        </div>
+      </div>`).join("");
+
+    const cal = D.calendar.map(c => {
+      const isNext = c.gw === D.gw;
+      const cls = isNext ? "cd next" : (c.half === 2 ? "cd h2" : "cd");
+      return `<div class="${cls}"><b>GW${c.gw}${c.fixtures!==10?` · ${c.fixtures} FIX`:""}</b><span>${esc(c.uk)}</span></div>`;
+    }).join("");
+
+    return `
+    <div class="sect-h"><h2>Fixture difficulty</h2><span class="c">next ${D.horizon} gameweeks</span></div>
+    <div class="card">
+      <div class="card-note" style="padding-top:14px">
+        Sorted easiest run first. The coloured squares are the official difficulty ratings for each
+        of the next ${D.horizon} matches — green is kind, red is not. From gameweek 7 these get
+        replaced by each club's actual rolling expected goals scored and conceded.
+      </div>
+      ${rows}
+    </div>
+
+    <div class="sect-h"><h2>Every deadline</h2><span class="c">all 38</span></div>
+    <div class="card">
+      <div class="card-note" style="padding-top:14px">
+        Deadlines are not weekly on a fixed day — Fridays, Saturdays at two different times, five
+        midweek Wednesdays, and two Sundays to close. Faded entries are the second chip half
+        (gameweeks 20–38). A gameweek showing anything other than 10 fixtures is a blank or a double.
+      </div>
+      <div class="cal">${cal}</div>
+    </div>`;
+  }
+
+  function vWatch(){
+    const worst = {};
+    D.squad.forEach(p => { if(!worst[p.pos] || p.projH < worst[p.pos].projH) worst[p.pos] = p; });
+    const segs = ["DEF","MID","FWD","GK"];
+    const panels = segs.map((pos,i) => {
+      const w = worst[pos];
+      const list = (D.watch[pos]||[]).map(p => {
+        const delta = w ? (p.projH - w.projH) : 0;
+        const good = delta >= 1.5;
+        return `<button class="pl" data-p="${p.id}" aria-expanded="false">
+          <div class="av">${esc(initials(p.full || p.name))}</div>
+          <div class="pl-m">
+            <div class="pl-n"><em>${esc(p.name)}</em>${p.own<5?'<span class="badge b-n">DIFF</span>':""}</div>
+            <div class="pl-s"><span>${esc(p.team)}</span><span>£${p.price.toFixed(1)}m</span><span>${p.own.toFixed(1)}%</span></div>
+          </div>
+          <div class="pl-r">
+            <div class="pl-p" style="color:${good?"var(--good)":"var(--ink-2)"}">${delta>0?"+":""}${delta.toFixed(1)}</div>
+            <div class="pl-l">vs ${esc(w?w.name:"–")}</div>
+          </div>
+        </button><div class="ev">${evidence(p)}</div>`;
+      }).join("");
+      return `<div class="wpanel" data-pos="${pos}" ${i?'hidden':''}>
+        <div class="card">
+          <div class="card-note" style="padding-top:14px">
+            Gain is measured over ${D.horizon} gameweeks against <strong>${esc(w?w.name:"–")}</strong>,
+            the weakest ${pos} in the squad. The bar for using a free transfer is
+            <strong>+1.5</strong>; for taking a −4 hit it is <strong>+6</strong>.
+          </div>
+          ${list || '<div class="card-note">Nothing qualifying right now.</div>'}
+        </div>
+      </div>`;
+    }).join("");
+
+    return `
+    <div class="sect-h"><h2>Transfer targets</h2><span class="c">not currently owned</span></div>
+    <div class="segs" role="tablist">${segs.map((p,i)=>
+      `<button class="seg" role="tab" aria-selected="${i===0}" data-seg="${p}">${LONG[p]}</button>`).join("")}</div>
+    ${panels}`;
+  }
+
+  function vLog(){
+    const entries = (D.log||[]).map(e => `
+      <div class="entry ${esc(e.kind||"")}">
+        <div class="e-h"><b>${esc(e.title)}</b><time>GW${e.gw} · ${esc(e.date)}</time></div>
+        <div class="e-s">${esc(e.summary)}</div>
+        <ul class="e-ev">${(e.evidence||[]).map(x=>`<li>${esc(x)}</li>`).join("")}</ul>
+      </div>`).join("");
+    return `
+    <div class="sect-h"><h2>Decision log</h2><span class="c">${(D.log||[]).length} entries</span></div>
+    <div class="card">
+      <div class="card-note" style="padding-top:14px">
+        Every change to the team, and the evidence behind it. Appended automatically at each
+        deadline review, so nothing gets quietly rewritten after the fact.
+      </div>
+      <div style="padding:4px 15px 15px"><div class="log">${entries}</div></div>
+    </div>`;
+  }
+
+  /* ---------- wiring ---------- */
+  $("#v-team").innerHTML = vTeam();
+  $("#v-form").innerHTML = vForm();
+  $("#v-fixtures").innerHTML = vFixtures();
+  $("#v-watch").innerHTML = vWatch();
+  $("#v-log").innerHTML = vLog();
+  $("#subline").textContent = "Gameweek " + D.gw + " · " + D.shape + " · £" + D.squadValue + "m";
+  $("#stamp").textContent = D.stamp || D.generatedUK;
+  $("#foot").innerHTML = "Built from the official Fantasy Premier League API · snapshot <code>"
+    + esc(D.generated) + "</code><br>Projections are estimates. Football is not.";
+
+  document.querySelectorAll(".tab").forEach(t => t.addEventListener("click", () => {
+    document.querySelectorAll(".tab").forEach(x => x.setAttribute("aria-selected", x === t));
+    document.querySelectorAll(".view").forEach(v => v.classList.toggle("on", v.id === "v-" + t.dataset.v));
+    window.scrollTo({top:0, behavior:"instant"});
+    try{ localStorage.setItem("fpl.tab", t.dataset.v); }catch(e){}
+  }));
+
+  document.addEventListener("click", e => {
+    const seg = e.target.closest(".seg");
+    if(seg){
+      seg.parentElement.querySelectorAll(".seg").forEach(s => s.setAttribute("aria-selected", s === seg));
+      document.querySelectorAll(".wpanel").forEach(p => p.hidden = p.dataset.pos !== seg.dataset.seg);
+      return;
+    }
+    const row = e.target.closest(".pl");
+    if(!row) return;
+    const ev = row.nextElementSibling;
+    if(!ev || !ev.classList.contains("ev")) return;
+    const open = ev.classList.toggle("show");
+    row.classList.toggle("open", open);
+    row.setAttribute("aria-expanded", open);
+  });
+
+  try{
+    const saved = localStorage.getItem("fpl.tab");
+    if(saved){ const t = document.querySelector('.tab[data-v="'+saved+'"]'); if(t) t.click(); }
+  }catch(e){}
+
+  const target = new Date(D.deadline).getTime();
+  const boxes = {};
+  document.querySelectorAll("#count [data-c]").forEach(b => boxes[b.dataset.c] = b);
+  function tick(){
+    let s = Math.floor((target - Date.now())/1000);
+    if(s <= 0){
+      const c = document.getElementById("count");
+      if(c) c.innerHTML = '<div class="cbox" style="flex:1"><b>Deadline passed</b><span>gameweek under way</span></div>';
+      return;
+    }
+    const d = Math.floor(s/86400); s -= d*86400;
+    const h = Math.floor(s/3600);  s -= h*3600;
+    const m = Math.floor(s/60);    s -= m*60;
+    if(boxes.d) boxes.d.textContent = d;
+    if(boxes.h) boxes.h.textContent = String(h).padStart(2,"0");
+    if(boxes.m) boxes.m.textContent = String(m).padStart(2,"0");
+    if(boxes.s) boxes.s.textContent = String(s).padStart(2,"0");
+    setTimeout(tick, 1000);
+  }
+  tick();
+})();
+</script>
