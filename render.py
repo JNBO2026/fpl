@@ -10,22 +10,24 @@ import json, os
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 
-HEAD = """  <meta charset="utf-8">
+FONT_LINK = 'https://fonts.googleapis.com/css2?family=League+Spartan:wght@500;600;700;800&family=Source+Sans+3:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap'
+
+HEAD = f"""  <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <meta name="theme-color" content="#141318">
+  <meta name="theme-color" content="#0B0E13">
   <meta name="color-scheme" content="dark">
   <meta name="description" content="Fantasy Premier League squad and the underlying data behind every selection.">
   <title>AI FC Control Room</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+  <link rel="stylesheet" href="{FONT_LINK}">
 """
 
 # Artifact hosts inject their own head; only the title and font link belong here.
-ARTIFACT_HEAD = """<title>AI FC Control Room</title>
+ARTIFACT_HEAD = f"""<title>AI FC Control Room</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<link rel="stylesheet" href="{FONT_LINK}">
 """
 
 data = json.load(open(os.path.join(HERE, "data.json")))

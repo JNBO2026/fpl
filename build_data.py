@@ -33,6 +33,28 @@ DEF_MULT = {1: 1.35, 2: 1.20, 3: 1.00, 4: 0.82, 5: 0.68}
 GOAL_PTS = {"GK": 10, "DEF": 6, "MID": 5, "FWD": 4}
 CS_PTS = {"GK": 4, "DEF": 4, "MID": 1, "FWD": 0}
 
+# Official Premier League CDN — same badges/photos the fantasy site itself uses.
+def crest_url(team_code):
+    return f"https://resources.premierleague.com/premierleague/badges/70/t{team_code}.png"
+
+
+def photo_url(player_code):
+    return f"https://resources.premierleague.com/premierleague/photos/players/110x140/p{player_code}.png"
+
+
+# Plain-English glossary — shown as a standing reference card on the Evidence
+# tab, for someone who doesn't already know what "xG" means.
+GLOSSARY = [
+    {"term": "Expected goals (xG)", "plain": "How many goals a player would be expected to score from the shots he's taken, based on how good those chances were. A high xG means he's getting into good scoring positions, even on games he doesn't actually score."},
+    {"term": "Expected assists (xA)", "plain": "The same idea, for the passes leading to a shot — how many assists you'd expect from the quality of chances he's created."},
+    {"term": "Clean sheet probability", "plain": "The estimated chance a team doesn't concede a goal in a match. Goalkeepers and defenders get 4 points for a clean sheet, midfielders get 1."},
+    {"term": "Defensive contribution", "plain": "A newer way to score points for defensive work — tackles, interceptions, blocks, ball recoveries. Hit a threshold in a game (10 for defenders, 12 for midfielders/forwards) and you earn 2 points, even without a goal or clean sheet."},
+    {"term": "Fixture difficulty (FDR)", "plain": "A 1–5 rating of how hard a team's next opponent is expected to be — 1–2 is a kind fixture, 4–5 is a tough one. Used to weight the projections toward players facing weaker defences (or weaker attacks, for defenders)."},
+    {"term": "Bonus points", "plain": "The top 3 performers in each match, as scored by the official Bonus Points System, get 3, 2 and 1 extra points. Estimated here from a player's BPS rate."},
+    {"term": "Ownership", "plain": "The percentage of all Fantasy managers who currently own a player. A high-ownership player who scores big doesn't gain you much rank; a low-ownership player who scores big gains you a lot — and costs you a lot if he doesn't play."},
+    {"term": "Projected points", "plain": "This model's estimate of a player's points for a single gameweek, built from all of the above and blended with his actual scoring record."},
+]
+
 
 def get(path, cache=None):
     if cache and os.path.exists(cache):
@@ -67,6 +89,7 @@ def build():
     teams = {t["id"]: t for t in boot["teams"]}
     tn = {t["id"]: t["short_name"] for t in boot["teams"]}
     tfull = {t["id"]: t["name"] for t in boot["teams"]}
+    tcrest = {t["id"]: crest_url(t["code"]) for t in boot["teams"]}
 
     # ---- gameweek context -------------------------------------------------
     events = boot["events"]
@@ -184,6 +207,41 @@ def build():
             fix = fm["att"]
 
         proj_gw = base * fix * exp_min * avail
+
+        # ---- plain-English "why" sentences, in order of how much they matter ----
+        why = []
+        if status in ("i", "u"):
+            why.append(f"Currently unavailable — {e['news'][:100] or 'flagged as out'}. Projection is discounted to close to zero until that clears.")
+        elif status == "s":
+            why.append("Suspended for the next match — projection discounted to zero for that game.")
+        elif status == "d":
+            pct = chance if chance is not None else 50
+            why.append(f"Marked a doubt by the club — about a {pct}% chance of playing, so the projection below is scaled down to match.")
+
+        if p in ("GK", "DEF") and mins > 500:
+            why.append(f"Around a {round(csp*100)}% chance of a clean sheet in a typical match — his team's defence has conceded roughly {xgc90:.2f} expected goals per 90 minutes recently.")
+        elif p == "MID" and mins > 500 and csp >= 0.30:
+            why.append(f"Plays for a defence keeping clean sheets often enough (~{round(csp*100)}% a game) that the 1-point clean-sheet bonus for midfielders adds up.")
+
+        if xg90 >= 0.25:
+            why.append(f"Getting into good scoring positions — expected to score around {xg90:.2f} goals per 90 minutes played, based on shot quality (his \"expected goals\").")
+        if xa90 >= 0.15:
+            why.append(f"Creating danger too: roughly {xa90:.2f} expected assists per 90 minutes from the chances he sets up.")
+
+        if p != "GK" and mins > 500 and dcp >= 0.35:
+            why.append(f"A real defensive threat — about a {round(dcp*100)}% chance most games of hitting enough tackles, blocks, interceptions or recoveries to earn the 2-point defensive-contribution bonus.")
+
+        if p == "GK" and mins > 500:
+            why.append(f"Averaging {sv90:.1f} saves per 90 minutes, which adds a small but steady points trickle on top of clean sheets.")
+
+        if fix >= 1.12:
+            why.append("Facing a kinder run of fixtures than most over the next few gameweeks, which the projection below already accounts for.")
+        elif fix <= 0.88:
+            why.append("Facing a tougher-than-average run of fixtures right now, which pulls the projection down a little.")
+
+        if e["selected_by_percent"] and float(e["selected_by_percent"]) < 3 and proj_gw > 0:
+            why.append(f"Only {e['selected_by_percent']}% of Fantasy managers own him — if he does haul, it's a bigger rank gain than a popular pick doing the same.")
+
         rows.append({
             "id": e["id"], "name": e["web_name"],
             "full": f"{e['first_name']} {e['second_name']}".strip(),
@@ -198,6 +256,8 @@ def build():
             "pen": e["penalties_order"], "sp": e["corners_and_indirect_freekicks_order"],
             "netT": e["transfers_in_event"] - e["transfers_out_event"],
             "fix": round(fix, 2), "wNow": round(w_now, 2),
+            "photo": photo_url(e["code"]), "crest": tcrest[tid],
+            "why": why[:4],
         })
 
     by_key = {(r["name"], r["team"]): r for r in rows}
@@ -235,7 +295,7 @@ def build():
         fm = fdr[tid]
         table.append({
             "team": tn[tid], "name": tfull[tid], "fdr": fm["avg"],
-            "run": fm["run"], "form": team_form.get(tid),
+            "run": fm["run"], "form": team_form.get(tid), "crest": tcrest[tid],
             "owned": sorted({r["name"] for r in squad if r["tid"] == tid}),
         })
     table.sort(key=lambda x: x["fdr"])
@@ -262,7 +322,7 @@ def build():
         "squadValue": round(sum(r["price"] for r in squad), 1),
         "xiProj": round(sum(r["proj"] for r in xi), 1),
         "squad": squad, "xi": xi, "bench": bench,
-        "watch": watch, "table": table, "log": decisions,
+        "watch": watch, "table": table, "log": decisions, "glossary": GLOSSARY,
         "calendar": [{
             "gw": e["id"],
             "deadline": e["deadline_time"],
