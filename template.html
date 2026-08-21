@@ -59,24 +59,27 @@ img{max-width:100%}
 .hero-img{
   position:relative;height:172px;overflow:hidden;background:linear-gradient(160deg,#1B2130,#0B0E13)
 }
-.hero-img img{
-  position:absolute;right:-6px;bottom:-14px;height:206px;width:auto;max-width:none;
+.hero-crest{
+  position:absolute;right:-22px;top:-26px;z-index:1;width:170px;height:170px;
+  opacity:.14;filter:grayscale(.15)
+}
+.hero-photo{
+  position:absolute;right:-6px;bottom:-14px;z-index:2;height:206px;width:auto;max-width:none;
   filter:saturate(1.04)
 }
 .hero-img::after{
-  content:"";position:absolute;inset:0;
+  content:"";position:absolute;inset:0;z-index:3;
   background:linear-gradient(100deg,var(--panel) 8%,rgba(19,24,34,.72) 42%,rgba(19,24,34,0) 78%),
              linear-gradient(0deg,var(--panel) 0%,rgba(19,24,34,0) 46%)
 }
 .hero-tag{
-  position:absolute;left:16px;top:14px;z-index:2;font-size:10.5px;letter-spacing:.16em;
+  position:absolute;left:16px;top:14px;z-index:4;font-size:10.5px;letter-spacing:.16em;
   text-transform:uppercase;color:var(--accent-2);font-weight:600;display:flex;align-items:center;gap:6px
 }
 .hero-tag svg{width:12px;height:12px;fill:var(--accent-2)}
-.hero-name{position:absolute;left:16px;bottom:14px;z-index:2;right:120px}
+.hero-name{position:absolute;left:16px;bottom:14px;z-index:4;right:120px}
 .hero-name b{display:block;font-size:26px;line-height:1.02}
 .hero-name span{font-size:12px;color:var(--ink-2)}
-.hero-crest{position:absolute;right:14px;top:14px;z-index:2;width:30px;height:30px;opacity:.9}
 .hero-body{padding:14px 16px 16px}
 .hero .dl{font-size:12.5px;color:var(--ink-2);display:flex;align-items:baseline;gap:6px;flex-wrap:wrap}
 .hero .dl b{color:var(--ink);font-weight:600}
@@ -287,7 +290,8 @@ img{max-width:100%}
   .main{min-width:0}
   .hero{margin-top:14px}
   .hero-img{height:198px}
-  .hero-img img{height:236px}
+  .hero-photo{height:236px}
+  .hero-crest{width:198px;height:198px}
   .stats{grid-template-columns:repeat(4,1fr)}
   .cols{display:grid;grid-template-columns:1fr 1fr;gap:12px;align-items:start}
   .cal{grid-template-columns:repeat(auto-fill,minmax(120px,1fr))}
@@ -446,7 +450,7 @@ img{max-width:100%}
       <div class="hero-img">
         <div class="hero-tag"><svg viewBox="0 0 24 24"><path d="M12 2l2.4 7.4H22l-6.2 4.6 2.4 7.4L12 16.8 5.8 21.4l2.4-7.4L2 9.4h7.6z"/></svg>Captain this week</div>
         ${cap.crest ? `<img class="hero-crest" src="${cap.crest}" alt="" loading="lazy" onerror="this.remove()">` : ""}
-        ${cap.photo ? `<img src="${cap.photo}" alt="" loading="lazy" onerror="this.remove()">` : ""}
+        ${cap.photo ? `<img class="hero-photo" src="${cap.photo}" alt="" loading="lazy" onerror="this.remove()">` : ""}
         <div class="hero-name"><b class="disp">${esc(cap.name)}</b><span>${esc(cap.team)} · ${cap.proj.toFixed(1)} pts projected, doubled on the armband</span></div>
       </div>
       <div class="hero-body">

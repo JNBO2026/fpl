@@ -35,7 +35,7 @@ CS_PTS = {"GK": 4, "DEF": 4, "MID": 1, "FWD": 0}
 
 # Official Premier League CDN — same badges/photos the fantasy site itself uses.
 def crest_url(team_code):
-    return f"https://resources.premierleague.com/premierleague/badges/70/t{team_code}.png"
+    return f"https://resources.premierleague.com/premierleague/badges/100/t{team_code}.png"
 
 
 def photo_url(player_code):

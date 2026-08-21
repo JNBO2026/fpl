@@ -1,0 +1,39 @@
+[
+  {
+    "gw": 1,
+    "date": "2026-08-21",
+    "title": "Initial squad built",
+    "kind": "squad",
+    "summary": "All 599 players fed through the projection model, then optimised under the real constraints: £100.0m, 2/5/5/3, max 3 per club. Landed on a 4-4-2 spending exactly £100.0m.",
+    "evidence": [
+      "Haaland and João Pedro included partly on ownership — at 69% and 63%, not owning them is the biggest single risk in the game.",
+      "Gabriel is the highest-projected defender: 9.1 CBIT/90 gives a 42% chance of the defensive bonus every week, on top of a 49% clean-sheet probability.",
+      "Wieffer, Damsgaard and Sessegnon are sub-1% owned but hit their defensive thresholds 82%, 37% and 64% of the time — the market has not priced defensive contribution properly."
+    ]
+  },
+  {
+    "gw": 1,
+    "date": "2026-08-21",
+    "title": "Foden → Enzo Fernández",
+    "kind": "transfer",
+    "summary": "Swapped before submitting. Same £7.0m price. Foden projected slightly higher per 90 but appeared in only 51% of predicted Man City XIs.",
+    "evidence": [
+      "Foden: 2,078 minutes last season, 51% of predicted starting XIs — effectively a coin flip.",
+      "Enzo: 3,114 minutes, 87% of predicted XIs, on Chelsea set pieces and second penalties.",
+      "Also reduced Man City exposure from three players to two, cutting rotation risk concentration."
+    ]
+  },
+  {
+    "gw": 1,
+    "date": "2026-08-21",
+    "title": "Verified against press conferences",
+    "kind": "check",
+    "summary": "Every one of the fifteen cross-checked against manager press conferences and predicted lineups before submitting.",
+    "evidence": [
+      "Arteta confirmed Saliba is a long-term absence and Timber is not yet training — strengthens Gabriel and Calafiori rather than threatening them.",
+      "Le Bris: all Sunderland players available except Adingra. Ballard clear.",
+      "Doku ruled out for Man City, which is what opens the number-ten role for Cherki (66% of predicted XIs).",
+      "Sessegnon absent from Fulham's predicted XI — flagged as a risk, but he is bench slot 3 so the cost this week is near zero."
+    ]
+  }
+]
