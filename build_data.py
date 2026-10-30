@@ -13,18 +13,10 @@ API = "https://fantasy.premierleague.com/api"
 LONDON = zoneinfo.ZoneInfo("Europe/London")
 HERE = os.path.dirname(os.path.abspath(__file__))
 
-# The 15 currently in the squad, as (web_name, team short_name).
-# Update this list when a transfer is made.
-SQUAD = [
-    ("Raya", "ARS"), ("Verbruggen", "BHA"),
-    ("Gabriel", "ARS"), ("Calafiori", "ARS"), ("Wieffer", "BHA"),
-    ("Ballard", "SUN"), ("Sessegnon", "FUL"),
-    ("Cherki", "MCI"), ("Mbeumo", "MUN"), ("Enzo", "CHE"),
-    ("Damsgaard", "BRE"), ("Gomez", "BHA"),
-    ("Haaland", "MCI"), ("João Pedro", "CHE"), ("Beto", "EVE"),
-]
-CAPTAIN, VICE = "Haaland", "João Pedro"
-BENCH_ORDER = ["Verbruggen", "Beto", "Gomez", "Sessegnon"]
+# AI FC's FPL team. The squad, captain and bench are read from this entry's
+# public picks, which only update once a deadline has passed — so the public
+# page never gives away transfers before they lock.
+ENTRY_ID = 7802435
 
 HORIZON = 6
 POS = {1: "GK", 2: "DEF", 3: "MID", 4: "FWD"}
@@ -80,6 +72,26 @@ def p_at_least(lam, k):
 
 def cs_prob(xgc90):
     return math.exp(-xgc90) if xgc90 and xgc90 > 0 else 0.22
+
+
+def transfer_entries(transfers, names, logged_gws):
+    """Decision-log entries for transfers the FPL API knows about but decisions.json doesn't."""
+    by_gw = defaultdict(list)
+    for t in transfers:
+        if t["event"] not in logged_gws:
+            by_gw[t["event"]].append(t)
+    entries = []
+    for gw, moves in by_gw.items():
+        moves.sort(key=lambda t: t["time"])
+        pairs = [f"{names[t['element_out']]} → {names[t['element_in']]}" for t in moves]
+        entries.append({
+            "gw": gw, "date": moves[0]["time"][:10], "kind": "transfer",
+            "title": ", ".join(pairs),
+            "summary": "Recorded automatically from FPL. No reasoning was logged for this one.",
+            "evidence": [f"{names[t['element_out']]} sold at £{t['element_out_cost']/10:.1f}m, {names[t['element_in']]} bought at £{t['element_in_cost']/10:.1f}m."
+                         for t in moves],
+        })
+    return entries
 
 
 def build():
@@ -260,20 +272,29 @@ def build():
             "why": why[:4],
         })
 
-    by_key = {(r["name"], r["team"]): r for r in rows}
+    by_id = {r["id"]: r for r in rows}
 
-    # ---- squad ------------------------------------------------------------
+    # ---- squad: the last team locked in at a deadline ---------------------
+    team_gw = next((e["id"] for e in events if e.get("is_current")), None)
+    if team_gw is None:
+        sys.exit("No gameweek has started yet, so there are no public picks to read.")
+    picks = get(f"entry/{ENTRY_ID}/event/{team_gw}/picks/")["picks"]
+
     squad = []
-    for nm, tm in SQUAD:
-        r = by_key.get((nm, tm))
+    captain, vice = None, None
+    for pick in sorted(picks, key=lambda x: x["position"]):
+        r = by_id.get(pick["element"])
         if not r:
-            print(f"WARNING: {nm} ({tm}) not found — squad list may be stale", file=sys.stderr)
+            print(f"WARNING: player {pick['element']} not found in the FPL player list", file=sys.stderr)
             continue
         r = dict(r)
-        r["captain"] = r["name"] == CAPTAIN
-        r["vice"] = r["name"] == VICE
-        r["bench"] = BENCH_ORDER.index(r["name"]) if r["name"] in BENCH_ORDER else None
+        r["captain"], r["vice"] = pick["is_captain"], pick["is_vice_captain"]
+        r["bench"] = pick["position"] - 12 if pick["position"] > 11 else None
         r["run"] = fdr[r["tid"]]["run"]
+        if r["captain"]:
+            captain = r["name"]
+        if r["vice"]:
+            vice = r["name"]
         squad.append(r)
 
     squad_ids = {r["id"] for r in squad}
@@ -304,6 +325,9 @@ def build():
     dpath = os.path.join(HERE, "decisions.json")
     if os.path.exists(dpath):
         decisions = json.load(open(dpath))
+    logged_gws = {d["gw"] for d in decisions if d.get("kind") == "transfer"}
+    names = {e["id"]: e["web_name"] for e in boot["elements"]}
+    decisions += transfer_entries(get(f"entry/{ENTRY_ID}/transfers/"), names, logged_gws)
     decisions.sort(key=lambda d: (d["gw"], d["date"]), reverse=True)
 
     payload = {
@@ -311,6 +335,7 @@ def build():
         "generatedUK": datetime.datetime.now(LONDON).strftime("%a %-d %b %Y, %H:%M %Z"),
         "stamp": datetime.datetime.now(LONDON).strftime("%-d %b · %H:%M"),
         "gw": nxt["id"],
+        "teamGw": team_gw,
         "deadline": nxt["deadline_time"],
         "deadlineUK": deadline.astimezone(LONDON).strftime("%a %-d %b, %H:%M %Z"),
         "gwPlayed": played,
@@ -318,7 +343,7 @@ def build():
         "seasonWeight": round(min(0.8, played / 12) if played else 0.0, 2),
         "fixtureCounts": {str(k): v for k, v in sorted(fx_count.items())},
         "shape": shape,
-        "captain": CAPTAIN, "vice": VICE,
+        "captain": captain, "vice": vice,
         "squadValue": round(sum(r["price"] for r in squad), 1),
         "xiProj": round(sum(r["proj"] for r in xi), 1),
         "squad": squad, "xi": xi, "bench": bench,

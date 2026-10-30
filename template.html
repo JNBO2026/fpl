@@ -448,12 +448,13 @@ img{max-width:100%}
     return `
     <div class="hero">
       <div class="hero-img">
-        <div class="hero-tag"><svg viewBox="0 0 24 24"><path d="M12 2l2.4 7.4H22l-6.2 4.6 2.4 7.4L12 16.8 5.8 21.4l2.4-7.4L2 9.4h7.6z"/></svg>Captain this week</div>
+        <div class="hero-tag"><svg viewBox="0 0 24 24"><path d="M12 2l2.4 7.4H22l-6.2 4.6 2.4 7.4L12 16.8 5.8 21.4l2.4-7.4L2 9.4h7.6z"/></svg>Captain, GW${D.teamGw}</div>
         ${cap.crest ? `<img class="hero-crest" src="${cap.crest}" alt="" loading="lazy" onerror="this.remove()">` : ""}
         ${cap.photo ? `<img class="hero-photo" src="${cap.photo}" alt="" loading="lazy" onerror="this.remove()">` : ""}
         <div class="hero-name"><b class="disp">${esc(cap.name)}</b><span>${esc(cap.team)} · ${cap.proj.toFixed(1)} pts projected, doubled on the armband</span></div>
       </div>
       <div class="hero-body">
+        <div class="dl">Team as locked in for GW${D.teamGw}. New moves appear after each deadline.</div>
         <div class="dl">Gameweek ${D.gw} deadline <b>${esc(D.deadlineUK)}</b></div>
         <div class="count" id="count">
           <div class="cbox"><b class="num" data-c="d">–</b><span>days</span></div>
@@ -609,8 +610,8 @@ img{max-width:100%}
     <div class="sect-h"><h2>Decision log</h2><span class="c">${(D.log||[]).length} entries</span></div>
     <div class="card">
       <div class="card-note" style="padding-top:14px">
-        Every change to the team, and the evidence behind it. Appended automatically at each
-        deadline review, so nothing gets quietly rewritten after the fact.
+        Every change to the team, and the evidence behind it where it was written down.
+        Transfers are added automatically from FPL once a deadline passes.
       </div>
       <div style="padding:4px 15px 15px"><div class="log">${entries}</div></div>
     </div>`;

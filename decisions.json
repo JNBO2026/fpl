@@ -35,5 +35,17 @@
       "Doku ruled out for Man City, which is what opens the number-ten role for Cherki (66% of predicted XIs).",
       "Sessegnon absent from Fulham's predicted XI — flagged as a risk, but he is bench slot 3 so the cost this week is near zero."
     ]
+  },
+  {
+    "gw": 2,
+    "date": "2026-08-28",
+    "title": "Damsgaard → Janelt",
+    "kind": "transfer",
+    "summary": "One free transfer, £5.5m to £5.0m, plus Gómez into the XI for Enzo at no cost. GW1 minutes showed three of the starting XI hadn't started: Cherki 27, Enzo 25, Damsgaard 14.",
+    "evidence": [
+      "Janelt played 90 minutes for 9 points and 13 defensive contributions, clearing the midfielder threshold of 12. Damsgaard managed 4 in 14 minutes and was 30% to start.",
+      "Gómez had 85 minutes, 6 points and 6 defensive contributions, and was sitting on the bench.",
+      "The model was mis-calibrated this early in the season, so this call was made on observed minutes and predicted lineups instead."
+    ]
   }
 ]

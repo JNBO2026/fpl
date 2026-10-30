@@ -55,14 +55,19 @@ ratings give way to each club's rolling expected goals scored and conceded.
 | `template.html` | The page. Edit this, not `index.html`. |
 | `build_data.py` | Fetches the API, runs the model, writes `data.json`. |
 | `render.py` | Inlines `data.json` into the template. |
-| `decisions.json` | The decision log — appended, never rewritten. |
+| `decisions.json` | Hand-written decision log entries. Transfers without one are filled in from FPL. |
 | `index.html` | Generated. Committed so Vercel can serve it directly. |
 | `data.json` | Generated. Committed as the audit trail. |
 
 ## Updating the squad
 
-Edit `SQUAD`, `CAPTAIN`, `VICE` and `BENCH_ORDER` at the top of `build_data.py`,
-add an entry to `decisions.json`, then run `./build.sh`.
+Nothing to edit. `build_data.py` reads the squad, captain and bench from FPL's public
+picks for `ENTRY_ID`. Those only update once a deadline has passed, so the page never
+gives away transfers early.
+
+Transfers are added to the decision log automatically. To record the reasoning for
+one, add an entry to `decisions.json` with `"kind": "transfer"` for that gameweek, and
+it replaces the automatic entry. Do this after the deadline, because the repo is public.
 
 ## Deploying
 
