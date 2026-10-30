@@ -497,9 +497,9 @@ img{max-width:100%}
         scoring rules, then scaled by expected minutes, availability and fixture difficulty over
         the next ${D.horizon} gameweeks.
         <br><br>
-        Current-season weighting: <strong>${Math.round(D.seasonWeight*100)}%</strong>
-        (${D.gwPlayed} gameweek${D.gwPlayed===1?"":"s"} played). The rest still comes from
-        2025/26 — that share falls to zero as this season's sample grows.
+        Based on this season only (${D.gwPlayed} gameweek${D.gwPlayed===1?"":"s"} played).
+        Players with few minutes are pulled toward a typical starter until the evidence builds up.
+        Figures are a per-gameweek average over that run, not a forecast for one match.
       </div>
     </div>
 
@@ -542,8 +542,7 @@ img{max-width:100%}
     <div class="card">
       <div class="card-note" style="padding-top:14px">
         Sorted easiest run first. The coloured squares are the official difficulty ratings for each
-        of the next ${D.horizon} matches — green is kind, red is not. From gameweek 7 these get
-        replaced by each club's actual rolling expected goals scored and conceded.
+        of the next ${D.horizon} matches — green is kind, red is not.
       </div>
       ${rows}
     </div>

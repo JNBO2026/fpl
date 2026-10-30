@@ -41,12 +41,12 @@ rather than points scored:
 | Defensive contribution | Poisson P(X ≥ 10) for defenders, P(X ≥ 12) for outfielders |
 | Bonus | scaled from BPS rate |
 
-That is blended with actual points per 90, weighted by sample size, then scaled by
-expected minutes, availability and fixture difficulty over the next six gameweeks.
+That is blended 55/45 with actual points per 90, pulled toward a typical starter while
+the sample is small (`PRIOR_90S`), then scaled by share of the club's minutes played,
+availability and official fixture difficulty over the next six gameweeks.
 
-As the season progresses, weight shifts onto current-season data
-(`min(0.8, gameweeks_played / 12)`), and from gameweek 7 static fixture-difficulty
-ratings give way to each club's rolling expected goals scored and conceded.
+Everything comes from this season, because the API only carries the current one.
+Projections are a per-gameweek average over that run, not a forecast for one match.
 
 ## Files
 

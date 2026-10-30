@@ -24,6 +24,9 @@ ATT_MULT = {1: 1.30, 2: 1.18, 3: 1.00, 4: 0.86, 5: 0.74}
 DEF_MULT = {1: 1.35, 2: 1.20, 3: 1.00, 4: 0.82, 5: 0.68}
 GOAL_PTS = {"GK": 10, "DEF": 6, "MID": 5, "FWD": 4}
 CS_PTS = {"GK": 4, "DEF": 4, "MID": 1, "FWD": 0}
+MIN_SAMPLE = 270          # minutes before clean-sheet and defensive rates are trusted
+PRIOR_90S = 3             # how many full matches of evidence the typical-starter prior is worth
+POS_PRIOR = {"GK": 3.5, "DEF": 3.5, "MID": 3.5, "FWD": 3.5}  # points per 90 for a typical starter
 
 # Official Premier League CDN — same badges/photos the fantasy site itself uses.
 def crest_url(team_code):
@@ -72,6 +75,37 @@ def p_at_least(lam, k):
 
 def cs_prob(xgc90):
     return math.exp(-xgc90) if xgc90 and xgc90 > 0 else 0.22
+
+
+def points_per_90(p, mins, points, bps, xg90, xa90, xgc90, dc90, sv90):
+    """Expected FPL points per 90 from underlying numbers, shrunk toward a typical starter."""
+    n90 = mins / 90
+    thresh = 10 if p == "DEF" else 12
+    csp = cs_prob(xgc90) if mins >= MIN_SAMPLE else 0.20
+    dcp = p_at_least(dc90, thresh) if mins >= MIN_SAMPLE else 0.0
+
+    xp90 = 2.0 + xg90 * GOAL_PTS[p] + xa90 * 3
+    if p in ("GK", "DEF"):
+        xp90 += csp * CS_PTS[p] - (xgc90 / 2) * 0.5
+    elif p == "MID":
+        xp90 += csp * CS_PTS[p]
+    if p == "GK":
+        xp90 += sv90 / 3
+    else:
+        xp90 += dcp * 2
+    bps90 = (bps / n90) if n90 > 3 else 0
+    xp90 += min(1.6, max(0.0, (bps90 - 14) / 14))
+
+    # Blend with what he has actually scored, then pull small samples toward
+    # the typical starter so three good cameos don't outrank a nailed regular.
+    blend = 0.55 * xp90 + 0.45 * (points / n90) if n90 >= 1 else xp90
+    weight = n90 / (n90 + PRIOR_90S)
+    return weight * blend + (1 - weight) * POS_PRIOR[p], csp, dcp
+
+
+def expected_minutes(mins, team_games):
+    """Share of his club's available minutes he has actually played this season."""
+    return min(1.0, mins / (team_games * 90)) if team_games else 0.5
 
 
 def transfer_entries(transfers, names, logged_gws):
@@ -157,6 +191,11 @@ def build():
                     "ga": round(sum(b for _, b in last) / len(last), 2),
                 }
 
+    team_games = defaultdict(int)
+    for f in results:
+        team_games[f["team_h"]] += 1
+        team_games[f["team_a"]] += 1
+
     # ---- player projections ----------------------------------------------
     rows = []
     for e in boot["elements"]:
@@ -164,46 +203,20 @@ def build():
             continue
         p = POS[e["element_type"]]
         mins = e["minutes"]
-        n90 = mins / 90 if mins else 0
         tid = e["team"]
         xg90 = float(e["expected_goals_per_90"] or 0)
         xa90 = float(e["expected_assists_per_90"] or 0)
         xgc90 = float(e["expected_goals_conceded_per_90"] or 0)
         dc90 = float(e["defensive_contribution_per_90"] or 0)
         sv90 = float(e["saves_per_90"] or 0)
-        starts90 = float(e["starts_per_90"] or 0)
 
-        thresh = 10 if p == "DEF" else 12
-        csp = cs_prob(xgc90) if mins > 500 else 0.20
-        dcp = p_at_least(dc90, thresh) if mins > 500 else 0.0
-
-        xp90 = 2.0 + xg90 * GOAL_PTS[p] + xa90 * 3
-        if p in ("GK", "DEF"):
-            xp90 += csp * CS_PTS[p] - (xgc90 / 2) * 0.5
-        elif p == "MID":
-            xp90 += csp * CS_PTS[p]
-        if p == "GK":
-            xp90 += sv90 / 3
-        else:
-            xp90 += dcp * 2
-        bps90 = (e["bps"] / n90) if n90 > 3 else 0
-        xp90 += min(1.6, max(0.0, (bps90 - 14) / 14))
-
-        ppg90 = (e["total_points"] / n90) if n90 >= 5 else None
-        if ppg90 is not None:
-            conf = min(1.0, n90 / 25)
-            base = 0.55 * xp90 + 0.45 * ppg90
-            base = conf * base + (1 - conf) * (0.75 * base)
-        else:
-            base, conf = xp90 * 0.55, 0.0
+        base, csp, dcp = points_per_90(p, mins, e["total_points"], e["bps"],
+                                       xg90, xa90, xgc90, dc90, sv90)
 
         # weight this season in as results accumulate
         w_now = min(0.8, played / 12) if played else 0.0
 
-        if n90 >= 5:
-            exp_min = min(1.0, 0.15 + 0.85 * min(1.0, starts90)) * min(1.0, n90 / 30 + 0.35)
-        else:
-            exp_min = 0.35
+        exp_min = expected_minutes(mins, team_games[tid])
 
         status, chance = e["status"], e["chance_of_playing_next_round"]
         avail = 0.0 if status in ("i", "u", "s") else (chance or 50) / 100 if status == "d" else 1.0
@@ -230,9 +243,9 @@ def build():
             pct = chance if chance is not None else 50
             why.append(f"Marked a doubt by the club — about a {pct}% chance of playing, so the projection below is scaled down to match.")
 
-        if p in ("GK", "DEF") and mins > 500:
+        if p in ("GK", "DEF") and mins >= MIN_SAMPLE:
             why.append(f"Around a {round(csp*100)}% chance of a clean sheet in a typical match — his team's defence has conceded roughly {xgc90:.2f} expected goals per 90 minutes recently.")
-        elif p == "MID" and mins > 500 and csp >= 0.30:
+        elif p == "MID" and mins >= MIN_SAMPLE and csp >= 0.30:
             why.append(f"Plays for a defence keeping clean sheets often enough (~{round(csp*100)}% a game) that the 1-point clean-sheet bonus for midfielders adds up.")
 
         if xg90 >= 0.25:
@@ -240,10 +253,10 @@ def build():
         if xa90 >= 0.15:
             why.append(f"Creating danger too: roughly {xa90:.2f} expected assists per 90 minutes from the chances he sets up.")
 
-        if p != "GK" and mins > 500 and dcp >= 0.35:
+        if p != "GK" and mins >= MIN_SAMPLE and dcp >= 0.35:
             why.append(f"A real defensive threat — about a {round(dcp*100)}% chance most games of hitting enough tackles, blocks, interceptions or recoveries to earn the 2-point defensive-contribution bonus.")
 
-        if p == "GK" and mins > 500:
+        if p == "GK" and mins >= MIN_SAMPLE:
             why.append(f"Averaging {sv90:.1f} saves per 90 minutes, which adds a small but steady points trickle on top of clean sheets.")
 
         if fix >= 1.12:
