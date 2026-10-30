@@ -43,10 +43,16 @@ rather than points scored:
 
 That is blended 55/45 with actual points per 90, pulled toward a typical starter while
 the sample is small (`PRIOR_90S`), then scaled by share of the club's minutes played,
-availability and official fixture difficulty over the next six gameweeks.
+availability and the fixture.
 
-Everything comes from this season, because the API only carries the current one.
-Projections are a per-gameweek average over that run, not a forecast for one match.
+The fixture adjustment is half official difficulty and half each opponent's expected
+goals over the last six gameweeks, with a home edge (`team_ratings`, `match_multipliers`).
+A GW4-8 backtest found neither source better than the other, so the blend is a hedge
+against official ratings going stale rather than a measured gain.
+
+`projNext` is the next gameweek only (zero on a blank, both games on a double). `proj`
+is a per-gameweek average over the next six. Everything comes from this season, because
+the API only carries the current one.
 
 ## Files
 

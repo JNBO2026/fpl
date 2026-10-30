@@ -388,14 +388,14 @@ img{max-width:100%}
         <div class="pl-n"><em>${esc(p.name)}</em>${flags(p)}</div>
         <div class="pl-s"><span>${esc(p.team)}</span><span>£${p.price.toFixed(1)}m</span><span>${p.own.toFixed(1)}% owned</span></div>
       </div>
-      <div class="pl-r"><div class="pl-p">${p.proj.toFixed(1)}</div><div class="pl-l">proj/gw</div></div>
+      <div class="pl-r"><div class="pl-p">${p.projNext.toFixed(1)}</div><div class="pl-l">GW${D.gw} proj</div></div>
     </button>
     <div class="ev">${evidence(p)}</div>`;
   }
   function evidence(p){
     const isKeeper = p.pos === "GK";
     const cells = isKeeper
-      ? [["Clean sheet chance",p.csp+"%",true],["Assists expected /90",p.xa90,false],["Minutes played 25/26",p.mins.toLocaleString(),false],["Points scored 25/26",p.pts,false]]
+      ? [["Clean sheet chance",p.csp+"%",true],["Assists expected /90",p.xa90,false],["Minutes played this season",p.mins.toLocaleString(),false],["Points scored this season",p.pts,false]]
       : [["Goals expected /90",p.xg90,p.xg90>=0.3],["Assists expected /90",p.xa90,p.xa90>=0.2],
          ["Defensive-bonus chance",p.dcp+"%",p.dcp>=50],["Clean sheet chance",p.csp+"%",p.csp>=40]];
 
@@ -410,7 +410,7 @@ img{max-width:100%}
       `<div class="st${c[2]?" hi":""}"><b>${esc(String(c[1]))}</b><span>${esc(c[0])}</span></div>`).join("") + "</div>";
 
     const m = [];
-    m.push(`<span class="chip"><i>6-gameweek total</i>${p.projH} pts</span>`);
+    m.push(`<span class="chip"><i>Next ${D.horizon} gameweeks</i>${p.projH} pts</span>`);
     m.push(`<span class="chip"><i>Points per £m</i>${p.ppm}</span>`);
     if(p.pen) m.push(`<span class="chip"><i>Penalty order</i>#${p.pen}</span>`);
     if(p.sp) m.push(`<span class="chip"><i>Set-piece order</i>#${p.sp}</span>`);
@@ -425,8 +425,8 @@ img{max-width:100%}
     const by = {};
     list.forEach(p => (by[p.pos] = by[p.pos] || []).push(p));
     return Object.keys(by).sort((a,b)=>ORDER[a]-ORDER[b]).map(pos => {
-      const g = by[pos].sort((a,b)=> b.proj - a.proj);
-      const tot = g.reduce((s,p)=>s+p.proj,0);
+      const g = by[pos].sort((a,b)=> b.projNext - a.projNext);
+      const tot = g.reduce((s,p)=>s+p.projNext,0);
       return `<div class="grp"><span>${LONG[pos]}</span><span class="n">${tot.toFixed(1)} pts proj</span></div>`
         + g.map(playerRow).join("");
     }).join("");
@@ -442,7 +442,7 @@ img{max-width:100%}
           <div class="pl-n"><em>${esc(p.name)}</em>${flags(p)}<span class="badge b-n">${p.pos}</span></div>
           <div class="pl-s"><span>${esc(p.team)}</span><span>£${p.price.toFixed(1)}m</span><span>sub ${i+1}</span></div>
         </div>
-        <div class="pl-r"><div class="pl-p">${p.proj.toFixed(1)}</div><div class="pl-l">proj/gw</div></div>
+        <div class="pl-r"><div class="pl-p">${p.projNext.toFixed(1)}</div><div class="pl-l">GW${D.gw} proj</div></div>
       </button><div class="ev">${evidence(p)}</div>`).join("");
 
     return `
@@ -451,7 +451,7 @@ img{max-width:100%}
         <div class="hero-tag"><svg viewBox="0 0 24 24"><path d="M12 2l2.4 7.4H22l-6.2 4.6 2.4 7.4L12 16.8 5.8 21.4l2.4-7.4L2 9.4h7.6z"/></svg>Captain, GW${D.teamGw}</div>
         ${cap.crest ? `<img class="hero-crest" src="${cap.crest}" alt="" loading="lazy" onerror="this.remove()">` : ""}
         ${cap.photo ? `<img class="hero-photo" src="${cap.photo}" alt="" loading="lazy" onerror="this.remove()">` : ""}
-        <div class="hero-name"><b class="disp">${esc(cap.name)}</b><span>${esc(cap.team)} · ${cap.proj.toFixed(1)} pts projected, doubled on the armband</span></div>
+        <div class="hero-name"><b class="disp">${esc(cap.name)}</b><span>${esc(cap.team)} · ${cap.projNext.toFixed(1)} pts projected for GW${D.gw}, doubled on the armband</span></div>
       </div>
       <div class="hero-body">
         <div class="dl">Team as locked in for GW${D.teamGw}. New moves appear after each deadline.</div>
@@ -465,7 +465,7 @@ img{max-width:100%}
         <div class="hero-foot">
           <div class="hf"><span>Shape</span><b>${esc(D.shape)}</b></div>
           <div class="hf"><span>Captain</span><b>${esc(D.captain)}</b></div>
-          <div class="hf"><span>XI proj</span><b>${D.xiProj} pts</b></div>
+          <div class="hf"><span>GW${D.gw} XI proj</span><b>${D.xiProj} pts</b></div>
           <div class="hf"><span>Value</span><b>£${D.squadValue}m</b></div>
         </div>
       </div>
@@ -479,7 +479,7 @@ img{max-width:100%}
   }
 
   function vForm(){
-    const all = D.squad.slice().sort((a,b)=> b.proj - a.proj);
+    const all = D.squad.slice().sort((a,b)=> b.projNext - a.projNext);
     const risky = all.filter(p => p.own < 5);
     const gloss = (D.glossary||[]).map(g => `<li><b>${esc(g.term)}</b>${esc(g.plain)}</li>`).join("");
     return `
@@ -494,12 +494,13 @@ img{max-width:100%}
       <div class="card-note">
         Expected goals and assists per 90, a clean-sheet probability from expected goals conceded,
         and the odds of clearing the defensive-contribution threshold — combined under the real
-        scoring rules, then scaled by expected minutes, availability and fixture difficulty over
-        the next ${D.horizon} gameweeks.
+        scoring rules, then scaled by expected minutes, availability and the fixture. The fixture
+        adjustment is half official difficulty and half each opponent's recent expected goals,
+        with a small boost at home.
         <br><br>
         Based on this season only (${D.gwPlayed} gameweek${D.gwPlayed===1?"":"s"} played).
         Players with few minutes are pulled toward a typical starter until the evidence builds up.
-        Figures are a per-gameweek average over that run, not a forecast for one match.
+        The number on each player is for the next match. Tap a player for the next ${D.horizon} gameweeks.
       </div>
     </div>
 
@@ -523,7 +524,7 @@ img{max-width:100%}
         <div class="tpos">${i+1}</div>
         <div>
           <div class="tnm">${t.crest?`<img src="${t.crest}" alt="" loading="lazy" onerror="this.remove()">`:""}${esc(t.name)}${t.owned.length?`<span class="mine">${t.owned.length} owned</span>`:""}</div>
-          <div class="tsub">${t.owned.length ? esc(t.owned.join(", ")) : "no players owned"}${t.form?` · last ${t.form.played}: ${t.form.gf} scored, ${t.form.ga} conceded per game`:""}</div>
+          <div class="tsub">${t.owned.length ? esc(t.owned.join(", ")) : "no players owned"}${t.form?` · last ${t.form.played}: ${t.form.gf} scored, ${t.form.ga} conceded per game`:""} · attack ${t.attForm}, conceding ${t.defForm}</div>
         </div>
         <div style="text-align:right">
           ${miniRun(t.run)}

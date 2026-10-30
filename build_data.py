@@ -27,6 +27,9 @@ CS_PTS = {"GK": 4, "DEF": 4, "MID": 1, "FWD": 0}
 MIN_SAMPLE = 270          # minutes before clean-sheet and defensive rates are trusted
 PRIOR_90S = 3             # how many full matches of evidence the typical-starter prior is worth
 POS_PRIOR = {"GK": 3.5, "DEF": 3.5, "MID": 3.5, "FWD": 3.5}  # points per 90 for a typical starter
+FORM_WINDOW = 6           # gameweeks of expected goals behind each club's rating
+FORM_PRIOR = 6            # matches of evidence the league-average prior is worth
+HOME_EDGE = 1.07          # how much better a club's numbers are at home (GW1-8 xG, home vs away)
 
 # Official Premier League CDN — same badges/photos the fantasy site itself uses.
 def crest_url(team_code):
@@ -47,7 +50,8 @@ GLOSSARY = [
     {"term": "Fixture difficulty (FDR)", "plain": "A 1–5 rating of how hard a team's next opponent is expected to be — 1–2 is a kind fixture, 4–5 is a tough one. Used to weight the projections toward players facing weaker defences (or weaker attacks, for defenders)."},
     {"term": "Bonus points", "plain": "The top 3 performers in each match, as scored by the official Bonus Points System, get 3, 2 and 1 extra points. Estimated here from a player's BPS rate."},
     {"term": "Ownership", "plain": "The percentage of all Fantasy managers who currently own a player. A high-ownership player who scores big doesn't gain you much rank; a low-ownership player who scores big gains you a lot — and costs you a lot if he doesn't play."},
-    {"term": "Projected points", "plain": "This model's estimate of a player's points for a single gameweek, built from all of the above and blended with his actual scoring record."},
+    {"term": "Projected points", "plain": "This model's estimate of a player's points for the next gameweek, built from all of the above and blended with his actual scoring record. It's an average, so a single week can land well above or below it."},
+    {"term": "Attack and defence form", "plain": "How many expected goals a club has created and conceded over its last six gameweeks, against the league average of 100, pulled toward average while the sample is small. Attack 120 means creating 20% more than average. Conceding 80 means allowing 20% less."},
 ]
 
 
@@ -108,6 +112,55 @@ def expected_minutes(mins, team_games):
     return min(1.0, mins / (team_games * 90)) if team_games else 0.5
 
 
+def team_ratings(live_by_gw, element_team, fixtures, before_gw):
+    """Each club's attack and defence over recent matches, relative to the league (1.0 = average).
+
+    Built from expected goals per gameweek. A player's expected goals conceded is his
+    club's figure while he was on the pitch, so summing them and dividing by 11 gives
+    the club's total. Short samples are pulled toward average.
+    """
+    window = range(max(1, before_gw - FORM_WINDOW), before_gw)
+    games, xgf, xga = defaultdict(int), defaultdict(float), defaultdict(float)
+    for f in fixtures:
+        if f["event"] in window and f.get("finished"):
+            games[f["team_h"]] += 1
+            games[f["team_a"]] += 1
+    for gw in window:
+        for row in live_by_gw.get(gw, []):
+            tid = element_team.get(row["id"])
+            if tid:
+                xgf[tid] += float(row["stats"]["expected_goals"] or 0)
+                xga[tid] += float(row["stats"]["expected_goals_conceded"] or 0) / 11
+    total = sum(games.values())
+    league = sum(xgf.values()) / total if total else 0
+    ratings = {}
+    for tid in element_team.values():
+        n = games[tid]
+        if not n or not league:
+            ratings[tid] = {"att": 1.0, "def": 1.0}
+            continue
+        w = n / (n + FORM_PRIOR)
+        ratings[tid] = {"att": 1 + w * (xgf[tid] / n / league - 1),
+                        "def": 1 + w * (xga[tid] / n / league - 1)}
+    return ratings
+
+
+def match_multipliers(ratings, opp, home):
+    """(attack, defence) multipliers for facing opp: a leaky opponent lifts attack, a sharp one lowers defence."""
+    venue = HOME_EDGE if home else 1 / HOME_EDGE
+    clip = lambda x: max(0.6, min(1.5, x))
+    return clip(ratings[opp]["def"] * venue), clip(venue / ratings[opp]["att"])
+
+
+def position_fix(p, att, dfn):
+    """How much of a player's output moves with the fixture, by position."""
+    if p in ("GK", "DEF"):
+        return 0.35 * att + 0.65 * dfn
+    if p == "MID":
+        return 0.75 * att + 0.25 * dfn
+    return att
+
+
 def transfer_entries(transfers, names, logged_gws):
     """Decision-log entries for transfers the FPL API knows about but decisions.json doesn't."""
     by_gw = defaultdict(list)
@@ -150,15 +203,28 @@ def build():
             fx_count[f["event"]] += 1
 
     # ---- fixture runs per team -------------------------------------------
+    # Ratings skip any gameweek still in progress, so half-played rounds don't skew them.
+    rated_to = next((e["id"] for e in events if not e["finished"]), events[-1]["id"] + 1)
+    live = {gw: get(f"event/{gw}/live/")["elements"]
+            for gw in range(max(1, rated_to - FORM_WINDOW), rated_to)}
+    element_team = {e["id"]: e["team"] for e in boot["elements"]}
+    ratings = team_ratings(live, element_team, fixtures, rated_to)
+
+    def run_entry(gw, opp, home, difficulty):
+        # Half official difficulty, half recent form: neither beat the other in the
+        # GW4-8 backtest, and official ratings go stale as the season moves on.
+        att, dfn = match_multipliers(ratings, opp, home)
+        return {"gw": gw, "opp": tn[opp], "home": home, "fdr": difficulty,
+                "att": round(0.5 * ATT_MULT[difficulty] + 0.5 * att, 3),
+                "def": round(0.5 * DEF_MULT[difficulty] + 0.5 * dfn, 3)}
+
     runs = defaultdict(list)
     for f in fixtures:
         ev = f["event"]
         if not ev or ev < nxt["id"] or ev >= nxt["id"] + HORIZON:
             continue
-        runs[f["team_h"]].append({"gw": ev, "opp": tn[f["team_a"]], "home": True,
-                                  "fdr": f["team_h_difficulty"]})
-        runs[f["team_a"]].append({"gw": ev, "opp": tn[f["team_h"]], "home": False,
-                                  "fdr": f["team_a_difficulty"]})
+        runs[f["team_h"]].append(run_entry(ev, f["team_a"], True, f["team_h_difficulty"]))
+        runs[f["team_a"]].append(run_entry(ev, f["team_h"], False, f["team_a_difficulty"]))
     for t in runs:
         runs[t].sort(key=lambda x: x["gw"])
 
@@ -169,8 +235,8 @@ def build():
         fdr[tid] = {
             "games": len(g),
             "avg": round(sum(x["fdr"] for x in g) / n, 2),
-            "att": sum(ATT_MULT[x["fdr"]] for x in g) / n,
-            "def": sum(DEF_MULT[x["fdr"]] for x in g) / n,
+            "att": sum(x["att"] for x in g) / n,
+            "def": sum(x["def"] for x in g) / n,
             "run": g,
         }
 
@@ -224,14 +290,12 @@ def build():
             avail = min(avail, chance / 100)
 
         fm = fdr[tid]
-        if p in ("GK", "DEF"):
-            fix = 0.35 * fm["att"] + 0.65 * fm["def"]
-        elif p == "MID":
-            fix = 0.75 * fm["att"] + 0.25 * fm["def"]
-        else:
-            fix = fm["att"]
+        fix = position_fix(p, fm["att"], fm["def"])
 
         proj_gw = base * fix * exp_min * avail
+        # Next round only. Zero on a blank, and counts both games on a double.
+        proj_next = base * exp_min * avail * sum(position_fix(p, x["att"], x["def"])
+                                                 for x in fm["run"] if x["gw"] == nxt["id"])
 
         # ---- plain-English "why" sentences, in order of how much they matter ----
         why = []
@@ -275,7 +339,8 @@ def build():
             "pts": e["total_points"], "mins": mins,
             "xg90": round(xg90, 2), "xa90": round(xa90, 2),
             "dc90": round(dc90, 1), "csp": round(csp * 100), "dcp": round(dcp * 100),
-            "proj": round(proj_gw, 2), "projH": round(proj_gw * fm["games"], 1),
+            "proj": round(proj_gw, 2), "projNext": round(proj_next, 2),
+            "projH": round(proj_gw * fm["games"], 1),
             "ppm": round(proj_gw * fm["games"] / (e["now_cost"] / 10), 2),
             "status": status, "news": e["news"][:120],
             "pen": e["penalties_order"], "sp": e["corners_and_indirect_freekicks_order"],
@@ -331,6 +396,7 @@ def build():
             "team": tn[tid], "name": tfull[tid], "fdr": fm["avg"],
             "run": fm["run"], "form": team_form.get(tid), "crest": tcrest[tid],
             "owned": sorted({r["name"] for r in squad if r["tid"] == tid}),
+            "attForm": round(ratings[tid]["att"] * 100), "defForm": round(ratings[tid]["def"] * 100),
         })
     table.sort(key=lambda x: x["fdr"])
 
@@ -358,7 +424,7 @@ def build():
         "shape": shape,
         "captain": captain, "vice": vice,
         "squadValue": round(sum(r["price"] for r in squad), 1),
-        "xiProj": round(sum(r["proj"] for r in xi), 1),
+        "xiProj": round(sum(r["projNext"] for r in xi), 1),
         "squad": squad, "xi": xi, "bench": bench,
         "watch": watch, "table": table, "log": decisions, "glossary": GLOSSARY,
         "calendar": [{
